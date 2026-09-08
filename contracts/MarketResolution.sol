@@ -3,12 +3,17 @@ pragma solidity 0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IMarketResolver} from "./interfaces/IMarketResolver.sol";
 
 /// @title MarketResolution
-/// @notice Prediction-market style contract: markets are created, users stake ETH on an
-/// option, an authorized Chainlink resolver settles the outcome, and winners pull their
-/// own payout instead of the contract pushing funds to every staker.
-contract MarketResolution is Ownable, ReentrancyGuard {
+/// @notice Reference implementation of the full market lifecycle (create / bet / resolve /
+/// claim). Creation, betting and claim logic are Agent 2's area of ownership per the shared
+/// design in AGENT_COORDINATION_1.md; this contract exists so Agent 1's mock resolver script
+/// and Chainlink CRE workflow have a real `IMarketResolver`-compatible target to call and test
+/// against before Agent 2's contract is ready. An authorized Chainlink resolver settles the
+/// outcome via `resolveMarket`, and winners pull their own payout instead of the contract
+/// pushing funds to every staker.
+contract MarketResolution is Ownable, ReentrancyGuard, IMarketResolver {
     struct Market {
         string question;
         string[] options;

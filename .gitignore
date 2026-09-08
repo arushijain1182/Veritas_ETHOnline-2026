@@ -4,3 +4,10 @@ artifacts/
 coverage/
 coverage.json
 .env
+
+# mutable mock-resolver runtime state (not source of truth, safe to regenerate)
+resolver/mock-result/resolved-events.json
+
+# CRE workflow build/deploy artifacts
+resolver/cre-workflow/dist/
+resolver/cre-workflow/node_modules/

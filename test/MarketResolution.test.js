@@ -147,6 +147,22 @@ describe("MarketResolution", function () {
 
       await expect(market.connect(stranger).resolveMarket(0, HIMADRI)).to.not.be.reverted;
     });
+
+    it("reverts on an out-of-range winningOption", async function () {
+      const { market, resolver, closingTime } = await deployFixture();
+      await time.increaseTo(closingTime + 1);
+      await expect(
+        market.connect(resolver).resolveMarket(0, 5)
+      ).to.be.revertedWithCustomError(market, "InvalidOption");
+    });
+
+    it("reverts when resolving a market that doesn't exist", async function () {
+      const { market, resolver, closingTime } = await deployFixture();
+      await time.increaseTo(closingTime + 1);
+      await expect(
+        market.connect(resolver).resolveMarket(99, HIMADRI)
+      ).to.be.revertedWithCustomError(market, "MarketDoesNotExist");
+    });
   });
 
   describe("claim (pull-payment payouts)", function () {

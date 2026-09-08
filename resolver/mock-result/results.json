@@ -1,0 +1,9 @@
+{
+  "IITD-CRICKET-2026-FINAL": {
+    "eventId": "IITD-CRICKET-2026-FINAL",
+    "winner": "HIMADRI",
+    "timestamp": 1790000000,
+    "source": "mock-iitd-sports-office",
+    "signature": "mock-sig-do-not-trust-in-prod"
+  }
+}

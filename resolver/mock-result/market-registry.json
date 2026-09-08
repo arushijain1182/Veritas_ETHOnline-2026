@@ -1,0 +1,7 @@
+{
+  "_comment": "Maps an official-result eventId to the on-chain marketId + the exact option order used in createMarket(), so a winner string can be mapped to a winningOption index. Agent 2: when you create a market, add its eventId mapping here (or move this registry on-chain / into a CRE workflow config if that's cleaner for the real deployment).",
+  "IITD-CRICKET-2026-FINAL": {
+    "marketId": 1,
+    "options": ["HIMADRI", "KARAKORAM"]
+  }
+}

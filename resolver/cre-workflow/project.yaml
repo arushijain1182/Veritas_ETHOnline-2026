@@ -1,0 +1,41 @@
+# Chainlink CRE CLI project config for the IITD Markets resolver workflow.
+#
+# Best-effort against the current (private-beta) CRE docs at
+# docs.chain.link/cre — the CRE CLI's exact YAML schema may have moved on by
+# the time you deploy this. Run `cre workflow init` / `cre workflow --help`
+# against your installed CLI version and reconcile field names against
+# whatever it scaffolds before trusting this file verbatim.
+
+name: iitd-markets-resolver
+entrypoint: src/main.ts
+runtime: typescript
+
+# Config values injected into `Config` (see src/config.ts) at deploy time.
+# `receiverAddress` and `marketRegistry` should be filled in once
+# contracts/CREMarketResolverReceiver.sol is deployed pointing at Agent 2's
+# real market contract (Stage 5) — for local simulation against
+# MarketResolution.sol without a receiver, use resolver/scripts/mockResolver.js
+# instead (see AGENT_COORDINATION_1.md).
+config:
+  schedule: "*/5 * * * *" # poll the official-result source every 5 minutes
+  resultApiUrl: "https://mock-iitd-sports.example/api/results/latest"
+  resultApiSecretName: "IITD_RESULTS_API_KEY"
+  chainSelectorName: "ethereum-testnet-sepolia" # key into EVMClient.SUPPORTED_CHAIN_SELECTORS
+  receiverAddress: "CHANGE_ME_RECEIVER_CONTRACT_ADDRESS"
+  marketRegistry:
+    IITD-CRICKET-2026-FINAL:
+      marketId: 1
+      options: ["HIMADRI", "KARAKORAM"]
+
+# Secrets referenced by name in the workflow (see confidentialResult.ts).
+# Actual secret values are provisioned through the Vault DON / `cre secrets`
+# tooling, never committed here.
+secrets:
+  - name: IITD_RESULTS_API_KEY
+    description: "Bearer token for the official (or mock) IITD results API"
+
+# Authorized on-chain writer: this workflow writes reports to the receiver
+# contract at `receiverAddress` (contracts/CREMarketResolverReceiver.sol),
+# which is what should be set as the market contract's `resolver` /
+# equivalent field — not an EOA, and not this workflow's own address. See
+# AGENT_COORDINATION_1.md, "resolver identity" note.

@@ -1,0 +1,20 @@
+{
+  "name": "iitd-markets-resolver-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chainlink CRE workflow that resolves IITD Markets prediction markets from an official inter-hostel competition result.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "simulate": "cre workflow simulate --config ./project.yaml",
+    "deploy": "cre workflow deploy --config ./project.yaml"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.19.1",
+    "viem": "^2.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
