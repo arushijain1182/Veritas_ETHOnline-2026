@@ -11,3 +11,13 @@ resolver/mock-result/resolved-events.json
 # CRE workflow build/deploy artifacts
 resolver/cre-workflow/dist/
 resolver/cre-workflow/node_modules/
+
+# per-run deployment addresses (regenerate with scripts/deployMarket.js)
+deployments/
+
+# frontend build output (frontend/src/abi/*.json and src/config/deployment.json
+# ARE committed on purpose — see frontend/README.md — so `npm install && npm
+# run dev` works right after cloning without a Hardhat compile/deploy first;
+# `npm run sync-abi` / `sync-deployment` regenerate them from the real build.)
+frontend/node_modules/
+frontend/dist/

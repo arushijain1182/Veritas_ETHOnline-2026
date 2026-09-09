@@ -1,0 +1,587 @@
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --border: #e4e2dd;
+  --text: #1c1b19;
+  --text-muted: #6b6862;
+  --accent: #a4001a; /* IITD-ish deep red */
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(164, 0, 26, 0.08);
+  --success: #1a7a4c;
+  --success-soft: rgba(26, 122, 76, 0.1);
+  --warn: #9a6b00;
+  --warn-soft: rgba(154, 107, 0, 0.12);
+  --danger: #b3261e;
+  --danger-soft: rgba(179, 38, 30, 0.1);
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121212;
+    --surface: #1a1a1a;
+    --border: #2c2c2c;
+    --text: #f2f1ef;
+    --text-muted: #a3a09a;
+    --accent: #ff5470;
+    --accent-contrast: #121212;
+    --accent-soft: rgba(255, 84, 112, 0.12);
+    --success: #4ade9c;
+    --success-soft: rgba(74, 222, 156, 0.12);
+    --warn: #f0b93d;
+    --warn-soft: rgba(240, 185, 61, 0.12);
+    --danger: #ff6b61;
+    --danger-soft: rgba(255, 107, 97, 0.12);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #121212;
+  --surface: #1a1a1a;
+  --border: #2c2c2c;
+  --text: #f2f1ef;
+  --text-muted: #a3a09a;
+  --accent: #ff5470;
+  --accent-contrast: #121212;
+  --accent-soft: rgba(255, 84, 112, 0.12);
+  --success: #4ade9c;
+  --success-soft: rgba(74, 222, 156, 0.12);
+  --warn: #f0b93d;
+  --warn-soft: rgba(240, 185, 61, 0.12);
+  --danger: #ff6b61;
+  --danger-soft: rgba(255, 107, 97, 0.12);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header__brand {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-main {
+  flex: 1;
+  padding: 24px;
+}
+
+.banner {
+  margin: 0 24px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.banner--warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid currentColor;
+}
+
+.banner code {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* buttons */
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.btn--secondary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn--ghost {
+  background: transparent;
+}
+
+/* connect wallet */
+
+.connect-wallet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connect-wallet__address {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* status badge */
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.status-badge--open {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.status-badge--closed {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.status-badge--resolved {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* market list */
+
+.market-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.market-card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+
+.market-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.market-card__header h2 {
+  font-size: 16px;
+}
+
+.market-card__options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.market-card__option {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+
+.market-card__option-pct {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.market-card__footer {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+/* market page */
+
+.back-link {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.market-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.market-page__header h1 {
+  font-size: 22px;
+}
+
+.market-page__pools {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.market-page__pool-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.market-page__pool-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.market-page__pool-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.market-page__pool-amount {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.market-page__meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.market-page__position {
+  background: var(--accent-soft);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.market-page__position h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.market-page__close {
+  background: var(--warn-soft);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.market-page__close p {
+  margin-bottom: 10px;
+}
+
+/* tabs */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs__tab {
+  background: none;
+  border: none;
+  padding: 10px 4px;
+  margin-right: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tabs__tab--active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* bet form */
+
+.bet-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bet-form__hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bet-form__options {
+  display: flex;
+  gap: 8px;
+}
+
+.option-pill {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.option-pill--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.bet-form__amount {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bet-form__amount input,
+.create-market input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+}
+
+.bet-form__balance,
+.bet-form__quote {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* tx status */
+
+.tx-status {
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tx-status--signing,
+.tx-status--confirming {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.tx-status--confirmed {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.tx-status--error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tx-status__hash {
+  font-family: ui-monospace, monospace;
+  opacity: 0.8;
+}
+
+/* claim panel */
+
+.claim-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.claim-panel__title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.claim-panel__winner {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.claim-panel__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.claim-panel__breakdown div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.claim-panel__breakdown dt {
+  color: var(--text-muted);
+}
+
+.claim-panel__breakdown dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.claim-panel__breakdown--you {
+  background: var(--accent-soft);
+}
+
+/* create market */
+
+.create-market {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.create-market label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.create-market fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-market legend {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.create-market__option-actions {
+  display: flex;
+  gap: 8px;
+}

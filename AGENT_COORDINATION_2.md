@@ -4,7 +4,7 @@ Status handoff doc for Agent 2's side. See [`AGENT_COORDINATION_1.md`](AGENT_COO
 for Agent 1's side (Chainlink CRE resolution) and the shared `IMarketResolver`
 contract between us.
 
-## What's built (backend: contracts, tests, deployment, demo — no frontend yet)
+## What's built
 
 - **[`contracts/Market.sol`](contracts/Market.sol)** — the real market contract
   the project ships (`MarketResolution.sol` remains Agent 1's reference/mock
@@ -98,11 +98,51 @@ contract between us.
   resolver (Himadri wins) → fee/prize breakdown shown → Alice claims. Run:
   `npx hardhat run scripts/demoMarket.js`.
 
-## Not yet built
+- **[`frontend/`](frontend/)** — React + TypeScript + Vite app, wagmi/viem
+  for wallet + contract calls (injected connector — MetaMask etc.). Three
+  screens per the brief:
+  - **Market list** (`src/pages/MarketListPage.tsx`) — question, live
+    per-option percentages (from `getOptionPool`), total pool, status badge.
+  - **Market page** (`src/pages/MarketPage.tsx`) — pool bars per option,
+    close time, the connected user's position, and (while `OPEN`) two bet
+    tabs: `BetForm` (direct USDC, approve-gated) and `SwapBetForm` (ETH ->
+    USDC via the real Uniswap V2 Router, `quoteETHForUSDC` preview + 1%
+    slippage tolerance) — the Stage 6 Uniswap MVP surfaced directly in the
+    UI, not just the contract. Shows a "Close Market" action once
+    `closeTime` has passed. All reads poll every 4s so pool/status update
+    live as other users bet/close/resolve.
+  - **Results/claim** (`ClaimPanel`, shown on the same market page once
+    `RESOLVED`) — winner, total pool / platform fee (10%) / winner pool
+    (90%) breakdown, the user's contribution and `previewClaim` payout, and
+    a `claim` button.
+  - Plus a fourth, owner-gated **Create Market** page
+    (`src/pages/CreateMarketPage.tsx`) for the "market creation UI"
+    deliverable — only visible/usable when the connected wallet is
+    `Market.owner()`.
+  - Every write action (approve/bet/swap-bet/close/claim/create) shows a
+    `TxStatus` indicator: signing -> confirming -> confirmed/error, per the
+    brief's "transaction status" requirement.
+  - `npm run sync-abi` / `sync-deployment` regenerate `src/abi/*.json` /
+    `src/config/deployment.json` from the Hardhat build + `deployments/
+    <network>.json` (written by `scripts/deployMarket.js`) — see
+    `frontend/README.md` for the full local-dev and live-network setup.
+  - **Verified working end-to-end against a real local deployment**: ran a
+    headless-browser session (Playwright) with a minimal injected
+    EIP-1193 provider forwarding to a live `npx hardhat node`, driving real
+    wallet-gated transactions through the actual UI — connect wallet,
+    approve USDC, place a direct bet, swap ETH for USDC via Uniswap and bet
+    it, and claim a resolved market's payout — and confirmed the on-chain
+    state (pool totals, balances, allowances) matched what the UI showed at
+    every step. Caught and fixed one real bug this way: `BetForm`'s
+    "which transaction's status to show" logic switched away from the
+    approve transaction the instant it confirmed (deferring to the not-yet-
+    started bet transaction, which was still idle), so the "Approved"
+    confirmation was never actually visible before the button flipped to
+    "Place Prediction" — fixed to keep showing approve's status until the
+    bet transaction itself starts.
 
-- **Frontend** (market list / market page / results+claim screens) — out of
-  scope for this pass, which focused on the contract, Uniswap integration,
-  tests, and deployment/demo scripts per "the backend."
+## Not built
+
 - **Stretch goal** (transferable YES/NO position tokens + Uniswap secondary
   liquidity) — deliberately skipped per the brief ("do NOT let this block
   the MVP").
@@ -125,17 +165,18 @@ contract between us.
   market first so the real one lands on `marketId 1` to match the existing
   registry entry without editing it.
 
-## For whoever builds the frontend next
+## Market contract's read surface (what the frontend wires up)
 
-- Read state via `getMarket(marketId)` (returns `question, options[],
-  closeTime, status (0=OPEN/1=CLOSED/2=RESOLVED), totalPool, winningOption,
-  platformFee, prizePool`) and `getOptionPool(marketId, option)`.
+- `getMarket(marketId)` (returns `question, options[], closeTime, status
+  (0=OPEN/1=CLOSED/2=RESOLVED), totalPool, winningOption, platformFee,
+  prizePool`) and `getOptionPool(marketId, option)`.
 - User's position: `userContribution(user, marketId, option)`.
 - Payout preview before claiming: `previewClaim(marketId, user)` (returns 0
   if not a winner or already claimed — safe to call unconditionally).
-- Two bet paths to wire up: `placeBet` (needs an `approve()` first) and
+- Two bet paths: `placeBet` (needs an `approve()` first) and
   `placeBetWithETH` (needs `quoteETHForUSDC(ethIn)` for the estimate shown
   before the user confirms, then pass a `minUSDCOut` with slippage
   tolerance).
 - `Market` ABI is in `artifacts/contracts/Market.sol/Market.json` after
-  `npx hardhat compile`.
+  `npx hardhat compile` (or `frontend/src/abi/Market.json` after
+  `npm run sync-abi`).

@@ -1,7 +1,10 @@
+const fs = require("fs");
+const path = require("path");
 const { ethers, network } = require("hardhat");
 const { deployUniswapV2, seedETHUSDCLiquidity } = require("./lib/deployUniswapV2");
 
 const LOCAL_NETWORKS = new Set(["hardhat", "localhost"]);
+const DEPLOYMENTS_DIR = path.join(__dirname, "..", "deployments");
 
 /**
  * Agent 2 deploy script. On a live network, point it at the real deployed
@@ -72,7 +75,24 @@ async function main() {
   console.log("Resolver:", resolverAddress);
   console.log("Fee recipient (defaults to deployer):", deployer.address);
 
-  return { market, marketAddress, usdcAddress, routerAddress, resolverAddress };
+  const chainId = Number((await ethers.provider.getNetwork()).chainId);
+  const manifest = {
+    network: network.name,
+    chainId,
+    market: marketAddress,
+    usdc: usdcAddress,
+    uniswapRouter: routerAddress,
+    resolver: resolverAddress,
+    feeRecipient: deployer.address,
+    deployedAt: new Date().toISOString(),
+  };
+  fs.mkdirSync(DEPLOYMENTS_DIR, { recursive: true });
+  const manifestPath = path.join(DEPLOYMENTS_DIR, `${network.name}.json`);
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+  console.log(`\nWrote deployment manifest to deployments/${network.name}.json`);
+  console.log("Run `npm run sync-deployment` in frontend/ to point the UI at it.");
+
+  return { market, marketAddress, usdcAddress, routerAddress, resolverAddress, manifest };
 }
 
 module.exports = { main };

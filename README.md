@@ -71,9 +71,9 @@ rather than a label.
 ## Agent 2 — Market / Uniswap
 
 Owns the `OPEN -> CLOSED` betting side and the `RESOLVED -> claimed` payout
-side, plus the Uniswap integration. Full details and open items: cross-agent
-contract and status in [`AGENT_COORDINATION_2.md`](AGENT_COORDINATION_2.md).
-(Backend/contracts only in this pass — no frontend yet.)
+side, the Uniswap integration, and the frontend. Full details and open
+items: cross-agent contract and status in
+[`AGENT_COORDINATION_2.md`](AGENT_COORDINATION_2.md).
 
 **Layout**
 - `contracts/Market.sol` — the real market contract the project ships:
@@ -98,6 +98,10 @@ contract and status in [`AGENT_COORDINATION_2.md`](AGENT_COORDINATION_2.md).
 - `scripts/demoMarket.js` — Stage 10 deterministic demo: deploy, create
   market, one direct USDC bet + one Uniswap ETH-swap bet, close, resolve
   (via Agent 1's mock resolver), claim.
+- `frontend/` — React + TypeScript + Vite app (wagmi/viem): market list,
+  market page (bet with USDC or swap ETH -> USDC via Uniswap, live
+  pool/status polling), results/claim screen, and an owner-gated market
+  creation page. See [`frontend/README.md`](frontend/README.md) for setup.
 
 **Usage**
 ```bash
@@ -110,4 +114,7 @@ npx hardhat run scripts/deployMarket.js
 # deploy to a live network against real USDC/Uniswap
 USDC_ADDRESS=0x... UNISWAP_ROUTER_ADDRESS=0x... RESOLVER_ADDRESS=0x... \
   npx hardhat run scripts/deployMarket.js --network <network>
+
+# frontend (after a local deploy above)
+cd frontend && npm install && npm run sync-deployment -- localhost && npm run dev
 ```
