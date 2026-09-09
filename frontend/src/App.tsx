@@ -4,6 +4,7 @@ import { MarketListPage } from "./pages/MarketListPage";
 import { MarketPage } from "./pages/MarketPage";
 import { CreateMarketPage } from "./pages/CreateMarketPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
+import { TermsPage } from "./pages/TermsPage";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/market/:marketId" element={<MarketPage />} />
         <Route path="/create" element={<CreateMarketPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/terms" element={<TermsPage />} />
       </Route>
     </Routes>
   );

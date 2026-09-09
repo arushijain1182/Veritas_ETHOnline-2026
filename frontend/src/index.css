@@ -787,3 +787,217 @@ a {
 .portfolio__claimed {
   color: var(--text-muted);
 }
+
+/* -------------------------------------------------------------------------
+ * Terms & Economic Mechanics Page
+ * ------------------------------------------------------------------------- */
+
+.terms-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-bottom: 48px;
+}
+
+.terms-page__header h1 {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.terms-page__subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.terms-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.terms-section h2 {
+  font-size: 18px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-top: 8px;
+}
+
+.terms-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.terms-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.terms-card--example {
+  border-left: 4px solid var(--accent);
+}
+
+.math-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.terms-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.terms-table th,
+.terms-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.terms-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  background: var(--bg);
+}
+
+.terms-table__total td {
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+}
+
+.terms-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.terms-rule {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+
+.terms-rule h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.terms-rule p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.terms-alert {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.terms-disclaimers {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.bet-form__terms {
+  margin: 10px 0 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.bet-form__terms a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.bet-form__terms a:hover {
+  opacity: 0.8;
+}
+
+/* -------------------------------------------------------------------------
+ * Global App Footer
+ * ------------------------------------------------------------------------- */
+
+.app-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding: 24px 0 32px 0;
+}
+
+.app-footer__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 540px) {
+  .app-footer__content {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.app-footer__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-footer__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.app-footer__desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.app-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.app-footer__links a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+

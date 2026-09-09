@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { MARKET_ABI, MARKET_ADDRESS, USDC_ABI, USDC_ADDRESS } from "../config/contracts";
 import { useTx } from "../hooks/useTx";
@@ -97,6 +98,10 @@ export function BetForm({
           {insufficientBalance ? "Insufficient balance" : `Place Prediction on ${options[option]}`}
         </button>
       )}
+
+      <p className="bet-form__terms">
+        By predicting, you agree to the <Link to="/terms">Terms &amp; Economic Mechanics</Link>.
+      </p>
 
       <TxStatus phase={activeTx.phase} error={activeTx.error} hash={activeTx.hash} />
     </div>

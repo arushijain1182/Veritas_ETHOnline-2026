@@ -42,6 +42,19 @@ export function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <footer className="app-footer">
+        <div className="app-footer__content">
+          <div className="app-footer__info">
+            <span className="app-footer__title">Veritas &bull; IITD Markets</span>
+            <span className="app-footer__desc">Pari-mutuel prediction pools powered by Chainlink CRE &amp; Uniswap V2</span>
+          </div>
+          <nav className="app-footer__links">
+            <Link to="/">Markets</Link>
+            {isConnected && <Link to="/portfolio">Portfolio</Link>}
+            <Link to="/terms">Terms &amp; Economic Mechanics</Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }

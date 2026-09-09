@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { parseEther } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { MARKET_ABI, MARKET_ADDRESS } from "../config/contracts";
@@ -104,6 +105,10 @@ export function SwapBetForm({
           {insufficientBalance ? "Insufficient ETH balance" : `Swap ETH -> USDC & Bet on ${options[option]}`}
         </button>
       )}
+
+      <p className="bet-form__terms">
+        By predicting, you agree to the <Link to="/terms">Terms &amp; Economic Mechanics</Link>.
+      </p>
 
       <TxStatus phase={swapBetTx.phase} error={swapBetTx.error} hash={swapBetTx.hash} />
     </div>
