@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount, useReadContract } from "wagmi";
-import { MARKET_ABI, MARKET_ADDRESS, isDeploymentConfigured } from "../config/contracts";
+import { CATEGORIES, CATEGORY_ICON, MARKET_ABI, MARKET_ADDRESS, isDeploymentConfigured } from "../config/contracts";
 import { useTx } from "../hooks/useTx";
 import { TxStatus } from "../components/TxStatus";
 
@@ -25,6 +25,7 @@ export function CreateMarketPage() {
 
   const [question, setQuestion] = useState("Who wins IITD Inter-Hostel Cricket Final?");
   const [options, setOptions] = useState(["HIMADRI", "KARAKORAM"]);
+  const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [closeTimeLocal, setCloseTimeLocal] = useState(defaultCloseTimeLocal());
   const createTx = useTx();
 
@@ -49,7 +50,7 @@ export function CreateMarketPage() {
       address: MARKET_ADDRESS,
       abi: MARKET_ABI,
       functionName: "createMarket",
-      args: [question.trim(), cleanOptions, closeTime],
+      args: [question.trim(), cleanOptions, closeTime, category],
     });
     if (hash) {
       setTimeout(() => navigate("/"), 1200);
@@ -64,6 +65,22 @@ export function CreateMarketPage() {
         <span>Question</span>
         <input value={question} onChange={(e) => setQuestion(e.target.value)} required />
       </label>
+
+      <fieldset>
+        <legend>Category</legend>
+        <div className="create-market__categories">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`category-pill ${category === c ? "category-pill--active" : ""}`}
+              onClick={() => setCategory(c)}
+            >
+              <span>{CATEGORY_ICON[c]}</span> {c}
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <fieldset>
         <legend>Options</legend>

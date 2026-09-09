@@ -48,13 +48,13 @@ async function main() {
 
   // Throwaway market so the real one lands on marketId 1, matching
   // resolver/mock-result/market-registry.json's eventId -> marketId mapping.
-  await (await market.connect(deployer).createMarket("Throwaway", ["A", "B"], closeTime)).wait();
+  await (await market.connect(deployer).createMarket("Throwaway", ["A", "B"], closeTime, "Other")).wait();
 
   console.log("\n== Creating market (marketId 1) ==");
   await (
     await market
       .connect(deployer)
-      .createMarket("Who wins IITD Inter-Hostel Cricket Final?", ["HIMADRI", "KARAKORAM"], closeTime)
+      .createMarket("Who wins IITD Inter-Hostel Cricket Final?", ["HIMADRI", "KARAKORAM"], closeTime, "Sports")
   ).wait();
   console.log('Market: "Who wins IITD Inter-Hostel Cricket Final?" [HIMADRI, KARAKORAM]');
 

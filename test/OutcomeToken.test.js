@@ -39,7 +39,7 @@ describe("OutcomeToken (Stage 6 stretch goal)", function () {
     }
 
     const closeTime = (await time.latest()) + 3600;
-    await market.connect(owner).createMarket(QUESTION, OPTIONS, closeTime);
+    await market.connect(owner).createMarket(QUESTION, OPTIONS, closeTime, "Sports");
 
     const [himadriTokenAddr, himadriPair] = await market.getOutcomeToken(0, HIMADRI);
     const [karakoramTokenAddr] = await market.getOutcomeToken(0, KARAKORAM);
@@ -95,7 +95,7 @@ describe("OutcomeToken (Stage 6 stretch goal)", function () {
     it("emits OutcomeTokenCreated for each option", async function () {
       const { market, owner } = await deployFixture();
       const closeTime = (await time.latest()) + 3600;
-      const tx = await market.connect(owner).createMarket("Q2", OPTIONS, closeTime);
+      const tx = await market.connect(owner).createMarket("Q2", OPTIONS, closeTime, "Sports");
       await expect(tx).to.emit(market, "OutcomeTokenCreated");
       const receipt = await tx.wait();
       const events = receipt.logs.map((l) => {
@@ -119,7 +119,7 @@ describe("OutcomeToken (Stage 6 stretch goal)", function () {
       const market = await Market.deploy(await usdc.getAddress(), owner.address, resolver.address);
       const closeTime = (await time.latest()) + 3600;
 
-      await expect(market.createMarket(QUESTION, OPTIONS, closeTime)).to.not.be.reverted;
+      await expect(market.createMarket(QUESTION, OPTIONS, closeTime, "Sports")).to.not.be.reverted;
 
       const [token, pair] = await market.getOutcomeToken(0, HIMADRI);
       expect(token).to.not.equal(ethers.ZeroAddress); // token still exists

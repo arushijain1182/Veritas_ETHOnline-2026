@@ -11,12 +11,13 @@ export interface MarketSummary {
   winningOption: bigint;
   platformFee: bigint;
   prizePool: bigint;
+  category: string;
   optionPools: bigint[];
 }
 
 function decodeMarket(id: number, raw: readonly unknown[] | undefined, optionPools: bigint[]): MarketSummary | null {
   if (!raw) return null;
-  const [question, options, closeTime, status, totalPool, winningOption, platformFee, prizePool] = raw as [
+  const [question, options, closeTime, status, totalPool, winningOption, platformFee, prizePool, category] = raw as [
     string,
     string[],
     bigint,
@@ -24,7 +25,8 @@ function decodeMarket(id: number, raw: readonly unknown[] | undefined, optionPoo
     bigint,
     bigint,
     bigint,
-    bigint
+    bigint,
+    string
   ];
   return {
     id,
@@ -36,6 +38,7 @@ function decodeMarket(id: number, raw: readonly unknown[] | undefined, optionPoo
     winningOption,
     platformFee,
     prizePool,
+    category,
     optionPools,
   };
 }

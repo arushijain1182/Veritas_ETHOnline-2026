@@ -106,6 +106,16 @@ a {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.app-header__brand-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
 .app-header__nav {
@@ -243,6 +253,12 @@ a {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.market-card__title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .market-card__header h2 {
@@ -622,4 +638,152 @@ a {
 .create-market__option-actions {
   display: flex;
   gap: 8px;
+}
+
+.create-market__categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* categories */
+
+.category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.category-pill--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* portfolio */
+
+.portfolio h1 {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.portfolio__summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.portfolio__stat {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.portfolio__stat--highlight {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.portfolio__stat-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.portfolio__stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio__positions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.portfolio__position {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+
+.portfolio__position-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.portfolio__position h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.portfolio__position-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.portfolio__position-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.portfolio__position-footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.portfolio__claimable {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.portfolio__claimed {
+  color: var(--text-muted);
 }

@@ -41,6 +41,7 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
         uint256 winningOption;
         uint256 platformFee; // locked in at resolution
         uint256 prizePool; // totalPool - platformFee, locked in at resolution
+        string category; // free-text, e.g. "Sports" — frontend groups/filters by it
     }
 
     uint16 public constant PLATFORM_FEE_BPS = 1000; // 10.00%, in basis points (10000 = 100%)
@@ -66,7 +67,13 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
     // (address(0) if pair creation failed/was skipped — see createMarket).
     mapping(uint256 => mapping(uint256 => address)) public outcomeTokenPair;
 
-    event MarketCreated(uint256 indexed marketId, string question, string[] options, uint256 closeTime);
+    event MarketCreated(
+        uint256 indexed marketId,
+        string question,
+        string[] options,
+        uint256 closeTime,
+        string category
+    );
     event OutcomeTokenCreated(
         uint256 indexed marketId,
         uint256 indexed option,
@@ -135,7 +142,8 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
     function createMarket(
         string calldata question,
         string[] calldata options,
-        uint256 closeTime
+        uint256 closeTime,
+        string calldata category
     ) external onlyOwner returns (uint256 marketId) {
         if (options.length < 2) revert InvalidOption();
         if (closeTime <= block.timestamp) revert InvalidCloseTime();
@@ -148,8 +156,9 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
         }
         m.closeTime = closeTime;
         m.status = Status.OPEN;
+        m.category = category;
 
-        emit MarketCreated(marketId, question, options, closeTime);
+        emit MarketCreated(marketId, question, options, closeTime, category);
 
         for (uint256 i = 0; i < options.length; i++) {
             _createOutcomeToken(marketId, i, options[i]);
@@ -352,11 +361,22 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
             uint256 totalPool,
             uint256 winningOption,
             uint256 platformFee,
-            uint256 prizePool
+            uint256 prizePool,
+            string memory category
         )
     {
         MarketData storage m = markets[marketId];
-        return (m.question, m.options, m.closeTime, m.status, m.totalPool, m.winningOption, m.platformFee, m.prizePool);
+        return (
+            m.question,
+            m.options,
+            m.closeTime,
+            m.status,
+            m.totalPool,
+            m.winningOption,
+            m.platformFee,
+            m.prizePool,
+            m.category
+        );
     }
 
     function getOptionPool(uint256 marketId, uint256 option) external view returns (uint256) {

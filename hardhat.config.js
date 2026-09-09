@@ -1,4 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config({ quiet: true });
+
+const sepoliaAccounts = process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY ? [process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY] : [];
 
 /** @type {import('hardhat/config').HardhatUserConfig} */
 module.exports = {
@@ -44,5 +47,9 @@ module.exports = {
   },
   networks: {
     hardhat: {},
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
+      accounts: sepoliaAccounts,
+    },
   },
 };

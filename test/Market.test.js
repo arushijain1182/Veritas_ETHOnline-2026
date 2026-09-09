@@ -6,6 +6,7 @@ const { deployUniswapV2, seedETHUSDCLiquidity } = require("../scripts/lib/deploy
 describe("Market", function () {
   const QUESTION = "Who wins IITD Inter-Hostel Cricket Final?";
   const OPTIONS = ["HIMADRI", "KARAKORAM"];
+  const CATEGORY = "Sports";
   const HIMADRI = 0;
   const KARAKORAM = 1;
 
@@ -35,7 +36,7 @@ describe("Market", function () {
     }
 
     const closeTime = (await time.latest()) + 3600;
-    await market.connect(owner).createMarket(QUESTION, OPTIONS, closeTime);
+    await market.connect(owner).createMarket(QUESTION, OPTIONS, closeTime, CATEGORY);
 
     return { market, usdc, router, owner, resolver, alice, bob, carol, stranger, closeTime };
   }
@@ -58,22 +59,23 @@ describe("Market", function () {
       expect(m.closeTime).to.equal(closeTime);
       expect(m.status).to.equal(0); // OPEN
       expect(m.totalPool).to.equal(0);
+      expect(m.category).to.equal(CATEGORY);
       expect(await market.marketCount()).to.equal(1);
     });
 
     it("emits MarketCreated", async function () {
       const { market, owner } = await deployFixture();
       const closeTime = (await time.latest()) + 3600;
-      await expect(market.connect(owner).createMarket("Q2", OPTIONS, closeTime))
+      await expect(market.connect(owner).createMarket("Q2", OPTIONS, closeTime, "Cultural"))
         .to.emit(market, "MarketCreated")
-        .withArgs(1, "Q2", OPTIONS, closeTime);
+        .withArgs(1, "Q2", OPTIONS, closeTime, "Cultural");
     });
 
     it("reverts with fewer than two options", async function () {
       const { market, owner } = await deployFixture();
       const closeTime = (await time.latest()) + 3600;
       await expect(
-        market.connect(owner).createMarket("Bad market", ["OnlyOne"], closeTime)
+        market.connect(owner).createMarket("Bad market", ["OnlyOne"], closeTime, CATEGORY)
       ).to.be.revertedWithCustomError(market, "InvalidOption");
     });
 
@@ -81,14 +83,14 @@ describe("Market", function () {
       const { market, owner } = await deployFixture();
       const past = (await time.latest()) - 1;
       await expect(
-        market.connect(owner).createMarket("Bad market", OPTIONS, past)
+        market.connect(owner).createMarket("Bad market", OPTIONS, past, CATEGORY)
       ).to.be.revertedWithCustomError(market, "InvalidCloseTime");
     });
 
     it("reverts when called by non-owner", async function () {
       const { market, alice } = await deployFixture();
       const closeTime = (await time.latest()) + 3600;
-      await expect(market.connect(alice).createMarket("Q", OPTIONS, closeTime)).to.be.reverted;
+      await expect(market.connect(alice).createMarket("Q", OPTIONS, closeTime, CATEGORY)).to.be.reverted;
     });
   });
 
@@ -440,7 +442,7 @@ describe("Market", function () {
       const brokeMarket = await Market.deploy(await usdc.getAddress(), await emptyRouter.getAddress(), resolver.address);
       await brokeMarket.waitForDeployment();
       const closeTime = (await time.latest()) + 3600;
-      await brokeMarket.createMarket(QUESTION, OPTIONS, closeTime);
+      await brokeMarket.createMarket(QUESTION, OPTIONS, closeTime, CATEGORY);
 
       await expect(
         brokeMarket.connect(alice).placeBetWithETH(0, HIMADRI, 0, { value: ethers.parseEther("1") })

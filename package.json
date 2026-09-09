@@ -25,5 +25,8 @@
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "canonical-weth": "^1.4.0",
     "hardhat": "^2.29.1"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
   }
 }

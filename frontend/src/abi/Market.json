@@ -226,6 +226,12 @@
         "internalType": "uint256",
         "name": "closeTime",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
       }
     ],
     "name": "MarketCreated",
@@ -417,6 +423,11 @@
         "internalType": "uint256",
         "name": "closeTime",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
       }
     ],
     "name": "createMarket",
@@ -492,6 +503,11 @@
         "internalType": "uint256",
         "name": "prizePool",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
       }
     ],
     "stateMutability": "view",

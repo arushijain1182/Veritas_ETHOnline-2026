@@ -34,3 +34,17 @@ export const MARKET_STATUS_LABEL: Record<MarketStatus, string> = {
   [MarketStatus.CLOSED]: "CLOSED",
   [MarketStatus.RESOLVED]: "RESOLVED",
 };
+
+// Curated category list offered on the Create Market form — category
+// itself is a free-text string on-chain, but a fixed picker keeps the
+// list page's grouping tidy rather than accumulating one-off strings.
+export const CATEGORIES = ["Sports", "Cultural", "Academic", "Elections", "Other"] as const;
+export type Category = (typeof CATEGORIES)[number];
+
+export const CATEGORY_ICON: Record<string, string> = {
+  Sports: "\u{1F3C6}", // 🏆
+  Cultural: "\u{1F3AD}", // 🎭
+  Academic: "\u{1F393}", // 🎓
+  Elections: "\u{1F5F3}\u{FE0F}", // 🗳️
+  Other: "\u{2728}", // ✨
+};

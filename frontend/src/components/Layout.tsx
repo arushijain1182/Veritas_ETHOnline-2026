@@ -4,7 +4,7 @@ import { ConnectWallet } from "./ConnectWallet";
 import { MARKET_ABI, MARKET_ADDRESS, isDeploymentConfigured } from "../config/contracts";
 
 export function Layout() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const { data: owner } = useReadContract({
     address: MARKET_ADDRESS,
     abi: MARKET_ABI,
@@ -17,9 +17,14 @@ export function Layout() {
     <div className="app-shell">
       <header className="app-header">
         <Link to="/" className="app-header__brand">
-          IITD Markets
+          Veritas <span className="app-header__brand-sub">IITD Markets</span>
         </Link>
         <nav className="app-header__nav">
+          {isConnected && (
+            <Link to="/portfolio" className="btn btn--ghost">
+              Portfolio
+            </Link>
+          )}
           {isOwner && (
             <Link to="/create" className="btn btn--ghost">
               + New Market

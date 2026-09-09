@@ -66,7 +66,7 @@ export function useMarket(marketId: number | undefined) {
 
   let market: MarketDetail | null = null;
   if (marketRaw && poolsAndPosition && marketId !== undefined) {
-    const [question, opts, closeTime, status, totalPool, winningOption, platformFee, prizePool] = marketRaw as [
+    const [question, opts, closeTime, status, totalPool, winningOption, platformFee, prizePool, category] = marketRaw as [
       string,
       string[],
       bigint,
@@ -74,7 +74,8 @@ export function useMarket(marketId: number | undefined) {
       bigint,
       bigint,
       bigint,
-      bigint
+      bigint,
+      string
     ];
     const optionPools = poolsAndPosition.slice(0, optionCount).map((r) => (r.result as bigint) ?? 0n);
     const userContributions = poolsAndPosition.slice(optionCount, optionCount * 2).map((r) => (r.result as bigint) ?? 0n);
@@ -94,6 +95,7 @@ export function useMarket(marketId: number | undefined) {
       winningOption,
       platformFee,
       prizePool,
+      category,
       optionPools,
       userContributions,
       previewClaim,

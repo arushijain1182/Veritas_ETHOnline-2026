@@ -51,7 +51,7 @@ describe("Market <-> CREMarketResolverReceiver integration", function () {
     }
 
     const closeTime = (await time.latest()) + 3600;
-    await market.connect(owner).createMarket(QUESTION, OPTIONS, closeTime);
+    await market.connect(owner).createMarket(QUESTION, OPTIONS, closeTime, "Sports");
 
     return { market, usdc, receiver, owner, forwarder, alice, bob, closeTime };
   }
