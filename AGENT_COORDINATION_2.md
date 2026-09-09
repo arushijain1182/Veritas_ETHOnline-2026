@@ -31,19 +31,47 @@ contract between us.
     1000`) and `prizePool` (90%) at resolution time and immediately pays
     the fee to `feeRecipient` (owner-settable, defaults to the deployer).
   - `claim(marketId)` — pull-payment payout, proportional to the caller's
-    stake on the winning option:
-    `payout = userStake * prizePool / winningOptionPool`. No loop over
-    winners anywhere in the contract (verified by a gas-flatness test with
-    10 independent stakers, matching Agent 1's equivalent test for
-    `MarketResolution.sol`).
+    **current balance of the winning option's OutcomeToken** (see the
+    stretch goal below — not the original `userContribution`, since
+    positions are transferable): `payout = tokenBalance * prizePool /
+    winningOptionPool`, then burns that balance. No loop over winners
+    anywhere in the contract (verified by a gas-flatness test with 10
+    independent stakers, matching Agent 1's equivalent test for
+    `MarketResolution.sol`). Burning (rather than a separate `claimed`
+    flag) is what makes a repeat call safe *and* non-permanent — acquire
+    more of the winning token later (e.g. buy it on Uniswap after a
+    partial claim) and that new balance is claimable too.
   - `previewClaim(marketId, user)` — view version of the same math, for the
     Results screen ("Your payout: ...") before submitting a claim tx.
-  - `getMarket(marketId)`, `getOptionPool(marketId, option)` — views for
-    the frontend's market list/detail screens.
-  - Events: `MarketCreated`, `BetPlaced`, `SwappedETHForUSDC`,
-    `MarketClosed`, `MarketResolved` (includes `totalPool`/`platformFee`/
-    `prizePool` so the UI's fee breakdown doesn't need a second read),
-    `Claimed`, `ResolverUpdated`, `FeeRecipientUpdated`.
+  - `getMarket(marketId)`, `getOptionPool(marketId, option)`,
+    `getOutcomeToken(marketId, option)` — views for the frontend's market
+    list/detail screens.
+  - Events: `MarketCreated`, `OutcomeTokenCreated`, `BetPlaced`,
+    `SwappedETHForUSDC`, `MarketClosed`, `MarketResolved` (includes
+    `totalPool`/`platformFee`/`prizePool` so the UI's fee breakdown doesn't
+    need a second read), `Claimed`, `ResolverUpdated`,
+    `FeeRecipientUpdated`.
+
+- **[`contracts/OutcomeToken.sol`](contracts/OutcomeToken.sol)** — Stage 6
+  **stretch goal**, now built: a transferable ERC20 per option
+  ("HIMADRI-M1", 6 decimals to match USDC 1:1), mint/burn restricted to the
+  `Market` contract that deployed it. `createMarket` deploys one per option
+  and — best-effort, via `contracts/uniswap/IUniswapV2Factory.sol` — lists
+  it on a real Uniswap V2 pair against USDC (`factory.createPair`), so
+  positions are tradeable on a real AMM before resolution, not just an
+  internal ledger entry. Listing is skipped (token still works, `pair` just
+  reads `address(0)` from `getOutcomeToken`) if `uniswapRouter` has no code
+  at that address — e.g. a test that doesn't care about Uniswap at all —
+  so the stretch goal genuinely never blocks market creation. `placeBet`
+  and `placeBetWithETH` both mint the bettor tokens 1:1 with the USDC
+  staked; `claim` burns whatever the winning token's current holder has.
+  `userContribution` is kept as a historical record only (who originally
+  bet what) — it is **not** consulted for payout, since a transferred
+  position pays whoever holds/burns the token, not whoever placed the
+  original bet. See `test/OutcomeToken.test.js` for the full behavior:
+  a buyer who never called `placeBet` claiming after buying the winning
+  token on Uniswap, a seller partially exiting pre-resolution, and
+  `scripts/demoMarket.js`'s "Stage 6" section for a live walkthrough.
 
 - **[`contracts/mocks/MockUSDC.sol`](contracts/mocks/MockUSDC.sol)** —
   6-decimal ERC20 stand-in for USDC (unrestricted `mint`, test/demo only).
@@ -75,11 +103,21 @@ contract between us.
   creation/views, invalid market id, close-before/after-deadline, valid/zero/
   insufficient-balance/after-close betting, resolver access control, the
   1000/700/100 → 128.57 USDC example from the brief exactly, losing bettors,
-  multiple winners, rounding/dust, double-claim, gas-flat claim scaling, and
-  the Uniswap path (successful swap, zero-ETH revert, slippage-protection
+  multiple winners, rounding/dust, double-claim (now via burned tokens, not
+  a `claimed` flag — see the stretch goal), gas-flat claim scaling, and the
+  Uniswap path (successful swap, zero-ETH revert, slippage-protection
   revert, no-liquidity revert, and that the bet is credited with the actual
   swap output). Run with `npx hardhat test test/Market.test.js`.
-  **68/68 passing** across both agents' suites (`npx hardhat test`).
+- **[`test/OutcomeToken.test.js`](test/OutcomeToken.test.js)** — 11 tests
+  for the stretch goal: token deployed + listed on a real Uniswap pair per
+  option (and gracefully pairless if the router has no code), 1:1 minting
+  from both bet paths, mint/burn access control (`onlyMarket`), a buyer who
+  never placed a bet claiming after acquiring the winning token, a seller
+  splitting a position and each side claiming their own remaining share, a
+  fresh balance acquired *after* a first claim still being claimable (no
+  permanent lockout), and real secondary-market trades (sell pre-resolution
+  for USDC, buy in with no bet history) through the actual Router.
+  **82/82 passing** across all three agents' suites (`npx hardhat test`).
 
 - **[`scripts/deployMarket.js`](scripts/deployMarket.js)** — deploys
   `Market` on any network. Locally (`hardhat`/`localhost`, no addresses
@@ -90,12 +128,16 @@ contract between us.
   — see that file's header comment for exact usage.
 
 - **[`scripts/demoMarket.js`](scripts/demoMarket.js)** — Stage 10
-  deterministic demo covering the brief's story end to end: deploy → create
-  market (marketId 1, matching Agent 1's `market-registry.json` mapping for
-  `IITD-CRICKET-2026-FINAL`) → Alice bets 100 USDC directly on HIMADRI → Bob
-  swaps 0.1 ETH for USDC via the real Uniswap Router and bets it on
-  KARAKORAM → pool/probability shown → close → resolve via Agent 1's mock
-  resolver (Himadri wins) → fee/prize breakdown shown → Alice claims. Run:
+  deterministic demo covering the brief's story end to end, including the
+  stretch goal: deploy → create market (marketId 1, matching Agent 1's
+  `market-registry.json` mapping for `IITD-CRICKET-2026-FINAL`) → Alice
+  bets 500 USDC directly on HIMADRI → Bob swaps 0.1 ETH for USDC via the
+  real Uniswap Router and bets it on KARAKORAM → pool/probability shown →
+  Alice LPs 200 of her HIMADRI position tokens against USDC on Uniswap →
+  Carol buys ~66 HIMADRI tokens on that secondary market, *never once
+  calling `placeBet`* → close → resolve via Agent 1's mock resolver
+  (Himadri wins) → fee/prize breakdown shown → both Alice and Carol claim,
+  each getting paid for the tokens they actually hold. Run:
   `npx hardhat run scripts/demoMarket.js`.
 
 - **[`frontend/`](frontend/)** — React + TypeScript + Vite app, wagmi/viem
@@ -113,8 +155,14 @@ contract between us.
     live as other users bet/close/resolve.
   - **Results/claim** (`ClaimPanel`, shown on the same market page once
     `RESOLVED`) — winner, total pool / platform fee (10%) / winner pool
-    (90%) breakdown, the user's contribution and `previewClaim` payout, and
-    a `claim` button.
+    (90%) breakdown, the user's original contribution and `previewClaim`
+    payout (now reflecting current OutcomeToken balance, not the original
+    bet — see the stretch goal), and a `claim` button.
+  - A **Position tokens** section on the market page surfaces the stretch
+    goal in the UI, not just the contract: each option's OutcomeToken
+    address and its Uniswap V2 pair address (or "not listed"), so a user
+    can find and trade the position in their own wallet / any Uniswap
+    front-end.
   - Plus a fourth, owner-gated **Create Market** page
     (`src/pages/CreateMarketPage.tsx`) for the "market creation UI"
     deliverable — only visible/usable when the connected wallet is
@@ -143,9 +191,13 @@ contract between us.
 
 ## Not built
 
-- **Stretch goal** (transferable YES/NO position tokens + Uniswap secondary
-  liquidity) — deliberately skipped per the brief ("do NOT let this block
-  the MVP").
+- Auto-seeded initial liquidity for every OutcomeToken/USDC pair — the pair
+  is created at market creation (so it exists and anyone can add liquidity
+  to it via the Router), but the contract itself doesn't fund and seed
+  liquidity on its own. Left to whoever wants to LP (a market maker, the
+  platform operator, or a bettor exiting a position), matching "provide
+  Uniswap liquidity/secondary trading" as *enabling* the mechanism rather
+  than the contract taking on custody/pricing risk it doesn't need to.
 
 ## Answers to Agent 1's open questions
 
@@ -170,9 +222,18 @@ contract between us.
 - `getMarket(marketId)` (returns `question, options[], closeTime, status
   (0=OPEN/1=CLOSED/2=RESOLVED), totalPool, winningOption, platformFee,
   prizePool`) and `getOptionPool(marketId, option)`.
-- User's position: `userContribution(user, marketId, option)`.
+- `getOutcomeToken(marketId, option)` — returns `(token, pair)`, the
+  option's transferable position token and its Uniswap V2 pair against
+  USDC (`pair` is `address(0)` if listing was skipped — see
+  `OutcomeToken.sol`'s coordination-doc entry above).
+- User's *original* stake (historical, not payout-determining):
+  `userContribution(user, marketId, option)`. A user's actual claimable
+  position is their current OutcomeToken balance — `balanceOf` on the
+  token from `getOutcomeToken`, or just call `previewClaim`.
 - Payout preview before claiming: `previewClaim(marketId, user)` (returns 0
-  if not a winner or already claimed — safe to call unconditionally).
+  if the user holds none of the winning token right now — whether because
+  they never backed the winner, already claimed, or sold/transferred their
+  position — safe to call unconditionally).
 - Two bet paths: `placeBet` (needs an `approve()` first) and
   `placeBetWithETH` (needs `quoteETHForUSDC(ethIn)` for the estimate shown
   before the user confirms, then pass a `minUSDCOut` with slippage

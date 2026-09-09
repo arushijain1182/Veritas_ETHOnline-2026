@@ -2,12 +2,19 @@ import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { MARKET_ABI, MARKET_ADDRESS, MarketStatus } from "../config/contracts";
 import type { MarketSummary } from "./useMarkets";
 
+export interface OutcomeTokenInfo {
+  token: `0x${string}`;
+  pair: `0x${string}`;
+}
+
 export interface MarketDetail extends MarketSummary {
   optionPools: bigint[];
   userContributions: bigint[];
   previewClaim: bigint;
-  claimed: boolean;
+  outcomeTokens: OutcomeTokenInfo[];
 }
+
+const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 /** A single market plus the connected user's position — the Market Page /
  * Results screen. Polled by the QueryClient's default refetchInterval so
@@ -39,19 +46,19 @@ export function useMarket(marketId: number | undefined) {
         address: MARKET_ADDRESS,
         abi: MARKET_ABI,
         functionName: "userContribution",
-        args: [address ?? "0x0000000000000000000000000000000000000000", BigInt(marketId ?? 0), BigInt(option)],
+        args: [address ?? ZERO, BigInt(marketId ?? 0), BigInt(option)],
+      })),
+      ...Array.from({ length: optionCount }, (_, option) => ({
+        address: MARKET_ADDRESS,
+        abi: MARKET_ABI,
+        functionName: "getOutcomeToken",
+        args: [BigInt(marketId ?? 0), BigInt(option)],
       })),
       {
         address: MARKET_ADDRESS,
         abi: MARKET_ABI,
         functionName: "previewClaim",
-        args: [BigInt(marketId ?? 0), address ?? "0x0000000000000000000000000000000000000000"],
-      },
-      {
-        address: MARKET_ADDRESS,
-        abi: MARKET_ABI,
-        functionName: "claimed",
-        args: [address ?? "0x0000000000000000000000000000000000000000", BigInt(marketId ?? 0)],
+        args: [BigInt(marketId ?? 0), address ?? ZERO],
       },
     ],
     query: { enabled: enabled && optionCount > 0 },
@@ -71,8 +78,11 @@ export function useMarket(marketId: number | undefined) {
     ];
     const optionPools = poolsAndPosition.slice(0, optionCount).map((r) => (r.result as bigint) ?? 0n);
     const userContributions = poolsAndPosition.slice(optionCount, optionCount * 2).map((r) => (r.result as bigint) ?? 0n);
-    const previewClaim = (poolsAndPosition[optionCount * 2]?.result as bigint) ?? 0n;
-    const claimed = (poolsAndPosition[optionCount * 2 + 1]?.result as boolean) ?? false;
+    const outcomeTokens = poolsAndPosition.slice(optionCount * 2, optionCount * 3).map((r) => {
+      const result = r.result as [string, string] | undefined;
+      return { token: (result?.[0] ?? ZERO) as `0x${string}`, pair: (result?.[1] ?? ZERO) as `0x${string}` };
+    });
+    const previewClaim = (poolsAndPosition[optionCount * 3]?.result as bigint) ?? 0n;
 
     market = {
       id: marketId,
@@ -87,7 +97,7 @@ export function useMarket(marketId: number | undefined) {
       optionPools,
       userContributions,
       previewClaim,
-      claimed,
+      outcomeTokens,
     };
   }
 

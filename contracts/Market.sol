@@ -4,8 +4,11 @@ pragma solidity 0.8.24;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IMarketResolver} from "./interfaces/IMarketResolver.sol";
 import {IUniswapV2Router02} from "./uniswap/IUniswapV2Router02.sol";
+import {IUniswapV2Factory} from "./uniswap/IUniswapV2Factory.sol";
+import {OutcomeToken} from "./OutcomeToken.sol";
 
 /// @title Market
 /// @notice IITD Markets: a USDC-denominated campus prediction market. Users
@@ -16,6 +19,12 @@ import {IUniswapV2Router02} from "./uniswap/IUniswapV2Router02.sol";
 /// can settle markets exactly the way they already do against
 /// MarketResolution.sol — this contract is the real one, that one was the
 /// scaffold used to build and test the resolver side.
+///
+/// Stage 6 stretch goal: each option gets a transferable OutcomeToken,
+/// minted 1:1 with USDC staked and listed on a Uniswap V2 token/USDC pair
+/// at creation time — a real secondary market for positions, not just an
+/// internal ledger. claim() pays out whoever holds (and burns) the
+/// winning-option token, not whoever originally placed the bet.
 contract Market is Ownable, ReentrancyGuard, IMarketResolver {
     enum Status {
         OPEN,
@@ -44,14 +53,26 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
 
     uint256 public marketCount;
     mapping(uint256 => MarketData) private markets;
-    // marketId => option => total USDC staked on that option
+    // marketId => option => total USDC staked on that option (also the
+    // winning token's redeemable supply once resolved — see claim()).
     mapping(uint256 => mapping(uint256 => uint256)) public optionPool;
-    // user => marketId => option => amount staked
+    // user => marketId => option => amount originally staked (historical
+    // record only — NOT used for payout, since positions are transferable;
+    // see OutcomeToken balances / claim()).
     mapping(address => mapping(uint256 => mapping(uint256 => uint256))) public userContribution;
-    // user => marketId => has claimed
-    mapping(address => mapping(uint256 => bool)) public claimed;
+    // marketId => option => this option's transferable position token.
+    mapping(uint256 => mapping(uint256 => OutcomeToken)) public outcomeToken;
+    // marketId => option => the token's Uniswap V2 pair against USDC
+    // (address(0) if pair creation failed/was skipped — see createMarket).
+    mapping(uint256 => mapping(uint256 => address)) public outcomeTokenPair;
 
     event MarketCreated(uint256 indexed marketId, string question, string[] options, uint256 closeTime);
+    event OutcomeTokenCreated(
+        uint256 indexed marketId,
+        uint256 indexed option,
+        address indexed token,
+        address uniswapPair
+    );
     event BetPlaced(uint256 indexed marketId, address indexed user, uint256 indexed option, uint256 amount);
     event SwappedETHForUSDC(address indexed user, uint256 ethIn, uint256 usdcOut);
     event MarketClosed(uint256 indexed marketId);
@@ -77,7 +98,6 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
     error MarketNotResolved();
     error CloseTimeNotReached();
     error NotResolver();
-    error AlreadyClaimed();
     error NoWinningStake();
     error TransferFailed();
 
@@ -130,6 +150,44 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
         m.status = Status.OPEN;
 
         emit MarketCreated(marketId, question, options, closeTime);
+
+        for (uint256 i = 0; i < options.length; i++) {
+            _createOutcomeToken(marketId, i, options[i]);
+        }
+    }
+
+    /// @dev Deploys the option's transferable position token and, best-effort,
+    /// lists it on a Uniswap V2 pair against USDC. Never reverts market
+    /// creation over Uniswap listing failing: on a network/test setup where
+    /// `uniswapRouter` isn't a real, fully-wired Router (e.g. a placeholder
+    /// address in a test that doesn't exercise Uniswap at all), this
+    /// degrades to "token exists, just not listed yet" rather than bricking
+    /// createMarket — the stretch goal must never block the MVP.
+    ///
+    /// The explicit code-size check (rather than relying on try/catch alone)
+    /// matters: calling a view/pure function on an address with no code
+    /// "succeeds" at the EVM level with empty returndata, and Solidity's
+    /// try/catch cannot catch the resulting ABI-decode failure — it bubbles
+    /// up as an uncatchable revert. try/catch only covers genuine reverts
+    /// from real contract code (e.g. Factory.createPair on an existing pair).
+    function _createOutcomeToken(uint256 marketId, uint256 option, string memory optionName) internal {
+        string memory symbol = string.concat(optionName, "-M", Strings.toString(marketId));
+        OutcomeToken token = new OutcomeToken(symbol, symbol, address(this));
+        outcomeToken[marketId][option] = token;
+
+        address pair = address(0);
+        if (address(uniswapRouter).code.length > 0) {
+            try uniswapRouter.factory() returns (address factoryAddr) {
+                if (factoryAddr.code.length > 0) {
+                    try IUniswapV2Factory(factoryAddr).createPair(address(token), address(usdc)) returns (address p) {
+                        pair = p;
+                    } catch {}
+                }
+            } catch {}
+        }
+        outcomeTokenPair[marketId][option] = pair;
+
+        emit OutcomeTokenCreated(marketId, option, address(token), pair);
     }
 
     // ---------------------------------------------------------------------
@@ -186,6 +244,7 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
         m.totalPool += amount;
         optionPool[marketId][option] += amount;
         userContribution[user][marketId][option] += amount;
+        outcomeToken[marketId][option].mint(user, amount);
 
         emit BetPlaced(marketId, user, option, amount);
     }
@@ -235,18 +294,26 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
     // Stage 4: claim-based payout (never pushed, never looped)
     // ---------------------------------------------------------------------
 
+    /// @dev Payout is proportional to the winning-option token balance the
+    /// caller holds *right now* — not to who originally placed the bet
+    /// (see OutcomeToken). Burning that balance is what makes a second call
+    /// safe: with 0 tokens left, NoWinningStake fires on any repeat call,
+    /// no separate "claimed" flag needed. It also means a claim is never
+    /// permanently locked out — if the caller acquires more of the winning
+    /// token later (e.g. buys more on Uniswap after a partial claim), that
+    /// new balance is claimable too.
     function claim(uint256 marketId) external nonReentrant marketExists(marketId) {
         MarketData storage m = markets[marketId];
         if (m.status != Status.RESOLVED) revert MarketNotResolved();
-        if (claimed[msg.sender][marketId]) revert AlreadyClaimed();
 
-        uint256 userStake = userContribution[msg.sender][marketId][m.winningOption];
-        if (userStake == 0) revert NoWinningStake();
+        OutcomeToken token = outcomeToken[marketId][m.winningOption];
+        uint256 tokenBalance = token.balanceOf(msg.sender);
+        if (tokenBalance == 0) revert NoWinningStake();
 
         uint256 winningPool = optionPool[marketId][m.winningOption];
-        uint256 payout = (userStake * m.prizePool) / winningPool;
+        uint256 payout = (tokenBalance * m.prizePool) / winningPool;
 
-        claimed[msg.sender][marketId] = true;
+        token.burn(msg.sender, tokenBalance);
 
         bool ok = usdc.transfer(msg.sender, payout);
         if (!ok) revert TransferFailed();
@@ -258,14 +325,15 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
     /// used by the Results screen ("Your payout: ...") before claiming.
     function previewClaim(uint256 marketId, address user) external view marketExists(marketId) returns (uint256) {
         MarketData storage m = markets[marketId];
-        if (m.status != Status.RESOLVED || claimed[user][marketId]) return 0;
+        if (m.status != Status.RESOLVED) return 0;
 
-        uint256 userStake = userContribution[user][marketId][m.winningOption];
-        if (userStake == 0) return 0;
+        OutcomeToken token = outcomeToken[marketId][m.winningOption];
+        uint256 tokenBalance = token.balanceOf(user);
+        if (tokenBalance == 0) return 0;
 
         uint256 winningPool = optionPool[marketId][m.winningOption];
         if (winningPool == 0) return 0;
-        return (userStake * m.prizePool) / winningPool;
+        return (tokenBalance * m.prizePool) / winningPool;
     }
 
     // ---------------------------------------------------------------------
@@ -293,5 +361,12 @@ contract Market is Ownable, ReentrancyGuard, IMarketResolver {
 
     function getOptionPool(uint256 marketId, uint256 option) external view returns (uint256) {
         return optionPool[marketId][option];
+    }
+
+    /// @notice The option's transferable position token and its Uniswap V2
+    /// pair against USDC (pair is address(0) if listing failed/was skipped
+    /// at creation time — see createMarket's try/catch).
+    function getOutcomeToken(uint256 marketId, uint256 option) external view returns (address token, address pair) {
+        return (address(outcomeToken[marketId][option]), outcomeTokenPair[marketId][option]);
     }
 }

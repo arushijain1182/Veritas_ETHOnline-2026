@@ -1,12 +1,15 @@
 const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
-const { deployUniswapV2, seedETHUSDCLiquidity } = require("./lib/deployUniswapV2");
+const { deployUniswapV2, seedETHUSDCLiquidity, seedTokenUSDCLiquidity } = require("./lib/deployUniswapV2");
 const { resolveOne } = require("../resolver/scripts/mockResolver");
 
 /**
- * Agent 2 Stage 10 deterministic demo — the full lifecycle from the brief:
- *   CREATE -> BET -> BET (one via Uniswap) -> CLOSE -> CHAINLINK-style
- *   RESOLUTION -> CLAIM
+ * Agent 2 Stage 10 deterministic demo — the full lifecycle from the brief,
+ * plus the Stage 6 stretch goal:
+ *   CREATE -> BET (direct + via Uniswap) -> Alice lists her HIMADRI position
+ *   on Uniswap -> Carol buys in on the secondary market (never places a bet
+ *   at all) -> CLOSE -> CHAINLINK-style RESOLUTION -> both Alice and Carol
+ *   CLAIM their share of the winning position they each hold.
  *
  * Market: "Who wins IITD Inter-Hostel Cricket Final?" — Himadri vs
  * Karakoram. Official result (resolver/mock-result/results.json, shared
@@ -18,7 +21,7 @@ const { resolveOne } = require("../resolver/scripts/mockResolver");
  */
 async function main() {
   const usdcUnits = (n) => ethers.parseUnits(n.toString(), 6);
-  const [deployer, resolver, alice, bob] = await ethers.getSigners();
+  const [deployer, resolver, alice, bob, carol] = await ethers.getSigners();
 
   console.log("== Deploying MockUSDC + local Uniswap V2 stack ==");
   const MockUSDC = await ethers.getContractFactory("MockUSDC");
@@ -56,10 +59,10 @@ async function main() {
   console.log('Market: "Who wins IITD Inter-Hostel Cricket Final?" [HIMADRI, KARAKORAM]');
 
   console.log("\n== Students obtain USDC and place predictions ==");
-  await (await usdc.mint(alice.address, usdcUnits(100))).wait();
+  await (await usdc.mint(alice.address, usdcUnits(500))).wait();
   await (await usdc.connect(alice).approve(marketAddress, ethers.MaxUint256)).wait();
-  await (await market.connect(alice).placeBet(1, 0, usdcUnits(100))).wait();
-  console.log("Alice bet 100 USDC directly on HIMADRI");
+  await (await market.connect(alice).placeBet(1, 0, usdcUnits(500))).wait();
+  console.log("Alice bet 500 USDC directly on HIMADRI");
 
   console.log("Bob obtains USDC via the Uniswap integration instead of already holding it:");
   const quote = await market.quoteETHForUSDC(ethers.parseEther("0.1"));
@@ -89,6 +92,29 @@ async function main() {
       `KARAKORAM ${ethers.formatUnits(await market.getOptionPool(1, 1), 6)})`
   );
 
+  console.log("\n== Stage 6 stretch goal: Alice's HIMADRI position is a real, tradeable token ==");
+  const [himadriTokenAddr, himadriPairAddr] = await market.getOutcomeToken(1, 0);
+  const himadriToken = await ethers.getContractAt("OutcomeToken", himadriTokenAddr);
+  console.log(`HIMADRI-M1 outcome token: ${himadriTokenAddr}`);
+  console.log(`Listed on Uniswap V2 pair (vs USDC): ${himadriPairAddr}`);
+
+  await seedTokenUSDCLiquidity(router, himadriToken, usdc, alice, {
+    tokenAmount: usdcUnits(200),
+    usdcAmount: usdcUnits(200),
+  });
+  console.log("Alice LPs 200 HIMADRI + 200 USDC into the pair (anyone can do this, not just Market itself)");
+
+  await (await usdc.mint(carol.address, usdcUnits(100))).wait();
+  await (await usdc.connect(carol).approve(await router.getAddress(), usdcUnits(100))).wait();
+  const carolPath = [await usdc.getAddress(), himadriTokenAddr];
+  await (
+    await router.connect(carol).swapExactTokensForTokens(usdcUnits(100), 0, carolPath, carol.address, closeTime)
+  ).wait();
+  const carolTokens = await himadriToken.balanceOf(carol.address);
+  console.log(
+    `Carol buys ${ethers.formatUnits(carolTokens, 6)} HIMADRI tokens with 100 USDC on the secondary market -- she never placed a bet through Market at all`
+  );
+
   console.log("\n== Market closes ==");
   await time.increaseTo(closeTime + 1);
   await (await market.closeMarket(1)).wait();
@@ -110,15 +136,33 @@ async function main() {
   console.log(`Platform fee: ${ethers.formatUnits(resolved.platformFee, 6)} USDC (10%)`);
   console.log(`Winner pool:  ${ethers.formatUnits(resolved.prizePool, 6)} USDC (90%)`);
 
-  console.log("\n== Winner claims payout ==");
-  const payout = await market.previewClaim(1, alice.address);
-  const before = await usdc.balanceOf(alice.address);
+  console.log("\n== Winners claim payout -- by token balance, not by who originally bet ==");
+  const aliceTokensBeforeClaim = await himadriToken.balanceOf(alice.address);
+  const alicePayout = await market.previewClaim(1, alice.address);
+  const aliceBefore = await usdc.balanceOf(alice.address);
   await (await market.connect(alice).claim(1)).wait();
-  const after = await usdc.balanceOf(alice.address);
-  console.log(`Alice claimed ${ethers.formatUnits(after - before, 6)} USDC (previewClaim matched: ${payout === after - before})`);
-  console.log("Alice was the sole HIMADRI backer, so she claims the entire 90% winner pool.");
+  const aliceAfter = await usdc.balanceOf(alice.address);
+  console.log(
+    `Alice claimed ${ethers.formatUnits(aliceAfter - aliceBefore, 6)} USDC for her remaining ${ethers.formatUnits(
+      aliceTokensBeforeClaim,
+      6
+    )} HIMADRI tokens (previewClaim matched: ${alicePayout === aliceAfter - aliceBefore})`
+  );
 
-  console.log("\nDemo complete: OPEN -> BET (direct + Uniswap) -> CLOSED -> CRE-style resolution -> RESOLVED -> claimed.");
+  const carolPayout = await market.previewClaim(1, carol.address);
+  const carolBefore = await usdc.balanceOf(carol.address);
+  await (await market.connect(carol).claim(1)).wait();
+  const carolAfter = await usdc.balanceOf(carol.address);
+  console.log(
+    `Carol claimed ${ethers.formatUnits(carolAfter - carolBefore, 6)} USDC for her ${ethers.formatUnits(
+      carolTokens,
+      6
+    )} HIMADRI tokens (previewClaim matched: ${carolPayout === carolAfter - carolBefore}) -- she claims a real payout despite never having called placeBet.`
+  );
+
+  console.log(
+    "\nDemo complete: OPEN -> BET (direct + Uniswap) -> position token listed + traded on Uniswap -> CLOSED -> CRE-style resolution -> RESOLVED -> claimed by token holders."
+  );
 }
 
 main().catch((error) => {

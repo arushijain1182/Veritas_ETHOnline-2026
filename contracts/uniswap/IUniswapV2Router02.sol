@@ -12,6 +12,8 @@ pragma solidity 0.8.24;
 interface IUniswapV2Router02 {
     function WETH() external pure returns (address);
 
+    function factory() external pure returns (address);
+
     function swapExactETHForTokens(
         uint256 amountOutMin,
         address[] calldata path,

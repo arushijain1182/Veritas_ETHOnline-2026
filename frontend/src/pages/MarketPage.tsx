@@ -8,7 +8,7 @@ import { BetForm } from "../components/BetForm";
 import { SwapBetForm } from "../components/SwapBetForm";
 import { ClaimPanel } from "../components/ClaimPanel";
 import { TxStatus } from "../components/TxStatus";
-import { formatCloseTime, formatPercent, formatUsdc } from "../lib/format";
+import { formatAddress, formatCloseTime, formatPercent, formatUsdc } from "../lib/format";
 import { MARKET_ABI, MARKET_ADDRESS, MarketStatus, isDeploymentConfigured } from "../config/contracts";
 
 export function MarketPage() {
@@ -115,6 +115,28 @@ export function MarketPage() {
       )}
 
       {market.status === MarketStatus.RESOLVED && <ClaimPanel market={market} onDone={refetch} />}
+
+      <div className="market-page__tokens">
+        <h3>Position tokens (Uniswap secondary market)</h3>
+        <p className="market-page__tokens-hint">
+          Every bet mints a transferable ERC20 for that option, 1:1 with the USDC staked. Trade it on Uniswap before
+          resolution, or hold it to claim — whoever holds the winning token at claim time gets paid, not necessarily
+          whoever placed the original bet.
+        </p>
+        {market.options.map((option, i) => {
+          const info = market.outcomeTokens[i];
+          if (!info) return null;
+          return (
+            <div className="market-page__token-row" key={option}>
+              <span>{option}</span>
+              <span title={info.token}>{formatAddress(info.token)}</span>
+              <span title={info.pair}>
+                {info.pair === "0x0000000000000000000000000000000000000000" ? "not listed" : formatAddress(info.pair)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -40,4 +40,35 @@ async function seedETHUSDCLiquidity(router, usdc, provider, { ethAmount, usdcAmo
   ).wait();
 }
 
-module.exports = { deployUniswapV2, seedETHUSDCLiquidity };
+/**
+ * Seeds an arbitrary ERC20/USDC pool (e.g. an OutcomeToken/USDC pair) so it
+ * can actually be traded via the Router — used for the Stage 6 stretch
+ * goal's secondary market. `token` must already be held by `provider` (for
+ * OutcomeToken that means `provider` staked/won a bet, since mint is
+ * Market-only) or otherwise obtainable; USDC is minted directly since it's
+ * a MockUSDC faucet.
+ */
+async function seedTokenUSDCLiquidity(router, token, usdc, provider, { tokenAmount, usdcAmount }) {
+  await (await usdc.mint(provider.address, usdcAmount)).wait();
+  const routerAddress = await router.getAddress();
+  await (await token.connect(provider).approve(routerAddress, tokenAmount)).wait();
+  await (await usdc.connect(provider).approve(routerAddress, usdcAmount)).wait();
+
+  const deadline = (await ethers.provider.getBlock("latest")).timestamp + 3600;
+  await (
+    await router
+      .connect(provider)
+      .addLiquidity(
+        await token.getAddress(),
+        await usdc.getAddress(),
+        tokenAmount,
+        usdcAmount,
+        0,
+        0,
+        provider.address,
+        deadline
+      )
+  ).wait();
+}
+
+module.exports = { deployUniswapV2, seedETHUSDCLiquidity, seedTokenUSDCLiquidity };

@@ -11,7 +11,13 @@ export function ClaimPanel({ market, onDone }: { market: MarketDetail; onDone: (
 
   const winningOption = Number(market.winningOption);
   const yourContribution = market.userContributions[winningOption] ?? 0n;
-  const canClaim = isConnected && !market.claimed && market.previewClaim > 0n;
+  const canClaim = isConnected && market.previewClaim > 0n;
+  // previewClaim reflects the *current* winning-token balance, not who
+  // originally bet — payouts follow the (transferable) token, see
+  // OutcomeToken.sol. So "nothing to claim" covers both "never backed the
+  // winner" and "already claimed / sold the position" — userContributions
+  // (the historical record) is what distinguishes them for this message.
+  const everHadWinningStake = yourContribution > 0n;
 
   async function handleClaim() {
     await claimTx.send({
@@ -48,7 +54,7 @@ export function ClaimPanel({ market, onDone }: { market: MarketDetail; onDone: (
       {isConnected && (
         <dl className="claim-panel__breakdown claim-panel__breakdown--you">
           <div>
-            <dt>Your contribution</dt>
+            <dt>Your original contribution</dt>
             <dd>{formatUsdc(yourContribution)}</dd>
           </div>
           <div>
@@ -60,10 +66,10 @@ export function ClaimPanel({ market, onDone }: { market: MarketDetail; onDone: (
 
       {!isConnected ? (
         <p className="empty-state">Connect your wallet to check your payout.</p>
-      ) : market.claimed ? (
-        <p className="empty-state">Already claimed.</p>
       ) : market.previewClaim === 0n ? (
-        <p className="empty-state">You didn't back the winning option.</p>
+        <p className="empty-state">
+          {everHadWinningStake ? "Already claimed (or sold your position)." : "You didn't back the winning option."}
+        </p>
       ) : (
         <button
           className="btn btn--primary"

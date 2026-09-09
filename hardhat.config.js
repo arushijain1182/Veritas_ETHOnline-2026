@@ -11,6 +11,11 @@ module.exports = {
             enabled: true,
             runs: 200,
           },
+          // OpenZeppelin's Strings/Bytes utilities (pulled in by
+          // OutcomeToken's symbol generation) use MCOPY, a Cancun opcode.
+          // Safe on any network this project targets — Dencun has been live
+          // on Ethereum mainnet and every public testnet since March 2024.
+          evmVersion: "cancun",
         },
       },
       // Real Uniswap V2 core/periphery + canonical WETH9, vendored under

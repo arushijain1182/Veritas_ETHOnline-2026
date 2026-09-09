@@ -88,24 +88,36 @@ items: cross-agent contract and status in
   `UniswapV2Library` init-code-hash — see `AGENT_COORDINATION_2.md` for
   why) for local/test/demo use; `Market.placeBetWithETH` swaps ETH for USDC
   through the real Router and bets the proceeds in one transaction.
+- `contracts/OutcomeToken.sol` — **Stage 6 stretch goal**: a transferable
+  ERC20 per market option, minted 1:1 with USDC staked and listed on its
+  own Uniswap V2 pair against USDC at market creation — a real secondary
+  market for positions. `claim()` pays out (and burns) whoever holds the
+  winning token, not necessarily whoever placed the original bet.
 - `test/Market.test.js` — 34 tests (creation/views, betting, closing,
   resolver access control, the spec's 1000/700/100 → 128.57 USDC payout
   example, multiple winners, rounding, double-claim, gas-flat claim
   scaling, and the Uniswap swap-and-bet path).
+- `test/OutcomeToken.test.js` — 11 tests for the stretch goal: pair
+  creation, 1:1 minting, mint/burn access control, a buyer who never bet
+  claiming after buying the winning token on Uniswap, split positions,
+  no-lockout on a post-claim token transfer, and real secondary-market
+  trades through the Router.
 - `scripts/deployMarket.js` — Stage-appropriate deploy script; local
   networks auto-deploy MockUSDC + a seeded Uniswap V2 stack, live networks
   take real `USDC_ADDRESS` / `UNISWAP_ROUTER_ADDRESS` / `RESOLVER_ADDRESS`.
 - `scripts/demoMarket.js` — Stage 10 deterministic demo: deploy, create
-  market, one direct USDC bet + one Uniswap ETH-swap bet, close, resolve
-  (via Agent 1's mock resolver), claim.
+  market, one direct USDC bet + one Uniswap ETH-swap bet, list + trade a
+  position token on Uniswap (one buyer never places a bet at all), close,
+  resolve (via Agent 1's mock resolver), both token holders claim.
 - `frontend/` — React + TypeScript + Vite app (wagmi/viem): market list,
   market page (bet with USDC or swap ETH -> USDC via Uniswap, live
-  pool/status polling), results/claim screen, and an owner-gated market
-  creation page. See [`frontend/README.md`](frontend/README.md) for setup.
+  pool/status polling, a position-token/Uniswap-pair info panel),
+  results/claim screen, and an owner-gated market creation page. See
+  [`frontend/README.md`](frontend/README.md) for setup.
 
 **Usage**
 ```bash
-npx hardhat test test/Market.test.js       # Agent 2's 34 tests
+npx hardhat test                           # all tests, including the stretch goal
 npx hardhat run scripts/demoMarket.js      # Stage 10 demo
 
 # deploy locally (auto-deploys MockUSDC + a local Uniswap V2 stack)

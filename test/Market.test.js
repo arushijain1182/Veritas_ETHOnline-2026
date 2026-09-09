@@ -300,7 +300,7 @@ describe("Market", function () {
       await expect(market.connect(carol).claim(0)).to.be.revertedWithCustomError(market, "NoWinningStake");
     });
 
-    it("pays multiple winners proportionally and blocks double claims", async function () {
+    it("pays multiple winners proportionally and blocks double claims (via burned tokens, not a claimed flag)", async function () {
       const { market, usdc, resolver, alice, bob, carol } = await deployFixture();
       await market.connect(alice).placeBet(0, HIMADRI, usdcUnits(100));
       await market.connect(bob).placeBet(0, HIMADRI, usdcUnits(300));
@@ -317,7 +317,7 @@ describe("Market", function () {
       expect((await usdc.balanceOf(alice.address)) - aliceBefore).to.equal(usdcUnits(135));
       expect((await usdc.balanceOf(bob.address)) - bobBefore).to.equal(usdcUnits(405));
 
-      await expect(market.connect(alice).claim(0)).to.be.revertedWithCustomError(market, "AlreadyClaimed");
+      await expect(market.connect(alice).claim(0)).to.be.revertedWithCustomError(market, "NoWinningStake");
     });
 
     it("reverts claim before the market is resolved", async function () {
