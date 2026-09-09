@@ -67,3 +67,47 @@ of the state transition — not merely reading/displaying data. See
 `resolver/cre-workflow/README.md` for why CRE (vs. a plain script) is
 load-bearing here, and why the confidential-compute component is genuine
 rather than a label.
+
+## Agent 2 — Market / Uniswap
+
+Owns the `OPEN -> CLOSED` betting side and the `RESOLVED -> claimed` payout
+side, plus the Uniswap integration. Full details and open items: cross-agent
+contract and status in [`AGENT_COORDINATION_2.md`](AGENT_COORDINATION_2.md).
+(Backend/contracts only in this pass — no frontend yet.)
+
+**Layout**
+- `contracts/Market.sol` — the real market contract the project ships:
+  USDC-denominated create/bet/close/claim, implements `IMarketResolver` so
+  Agent 1's resolver side (mock resolver or, in production, the Chainlink
+  CRE workflow via `CREMarketResolverReceiver`) settles it exactly the way
+  it already settles `MarketResolution.sol`. 10% platform fee / 90% winner
+  pool, locked in at resolution; claim-based payout (no loop over winners).
+- `contracts/mocks/MockUSDC.sol` — 6-decimal test/demo USDC.
+- `contracts/uniswap/IUniswapV2Router02.sol`, `contracts/vendor/` — the real
+  Uniswap V2 stack (Factory + WETH9 + Router, with a locally patched
+  `UniswapV2Library` init-code-hash — see `AGENT_COORDINATION_2.md` for
+  why) for local/test/demo use; `Market.placeBetWithETH` swaps ETH for USDC
+  through the real Router and bets the proceeds in one transaction.
+- `test/Market.test.js` — 34 tests (creation/views, betting, closing,
+  resolver access control, the spec's 1000/700/100 → 128.57 USDC payout
+  example, multiple winners, rounding, double-claim, gas-flat claim
+  scaling, and the Uniswap swap-and-bet path).
+- `scripts/deployMarket.js` — Stage-appropriate deploy script; local
+  networks auto-deploy MockUSDC + a seeded Uniswap V2 stack, live networks
+  take real `USDC_ADDRESS` / `UNISWAP_ROUTER_ADDRESS` / `RESOLVER_ADDRESS`.
+- `scripts/demoMarket.js` — Stage 10 deterministic demo: deploy, create
+  market, one direct USDC bet + one Uniswap ETH-swap bet, close, resolve
+  (via Agent 1's mock resolver), claim.
+
+**Usage**
+```bash
+npx hardhat test test/Market.test.js       # Agent 2's 34 tests
+npx hardhat run scripts/demoMarket.js      # Stage 10 demo
+
+# deploy locally (auto-deploys MockUSDC + a local Uniswap V2 stack)
+npx hardhat run scripts/deployMarket.js
+
+# deploy to a live network against real USDC/Uniswap
+USDC_ADDRESS=0x... UNISWAP_ROUTER_ADDRESS=0x... RESOLVER_ADDRESS=0x... \
+  npx hardhat run scripts/deployMarket.js --network <network>
+```
