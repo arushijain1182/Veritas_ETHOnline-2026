@@ -1,6 +1,6 @@
-import { useAccount, useReadContract, useReadContracts } from "wagmi";
-import { MARKET_ABI, MARKET_ADDRESS, MarketStatus } from "../config/contracts";
+import { useState, useEffect } from "react";
 import type { MarketSummary } from "./useMarkets";
+import { getCampusMarket, getUserInvestmentForMarket } from "../config/campusMarkets";
 
 export interface OutcomeTokenInfo {
   token: `0x${string}`;
@@ -16,97 +16,76 @@ export interface MarketDetail extends MarketSummary {
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
-/** A single market plus the connected user's position — the Market Page /
- * Results screen. Polled by the QueryClient's default refetchInterval so
- * the pool and status update live as other users bet/close/resolve. */
+/** A single demo market plus the user's position for the Market Page / Results screen.
+ * Resolves synchronously from local campus market data without blockchain network calls.
+ */
 export function useMarket(marketId: number | undefined) {
-  const { address } = useAccount();
-  const enabled = marketId !== undefined;
+  const [, setLocalVersion] = useState(0);
 
-  const { data: marketRaw, isLoading: marketLoading, refetch: refetchMarket } = useReadContract({
-    address: MARKET_ADDRESS,
-    abi: MARKET_ABI,
-    functionName: "getMarket",
-    args: enabled ? [BigInt(marketId)] : undefined,
-    query: { enabled },
-  });
-
-  const options = (marketRaw as readonly unknown[] | undefined)?.[1] as string[] | undefined;
-  const optionCount = options?.length ?? 0;
-
-  const { data: poolsAndPosition, isLoading: poolsLoading, refetch: refetchPools } = useReadContracts({
-    contracts: [
-      ...Array.from({ length: optionCount }, (_, option) => ({
-        address: MARKET_ADDRESS,
-        abi: MARKET_ABI,
-        functionName: "getOptionPool",
-        args: [BigInt(marketId ?? 0), BigInt(option)],
-      })),
-      ...Array.from({ length: optionCount }, (_, option) => ({
-        address: MARKET_ADDRESS,
-        abi: MARKET_ABI,
-        functionName: "userContribution",
-        args: [address ?? ZERO, BigInt(marketId ?? 0), BigInt(option)],
-      })),
-      ...Array.from({ length: optionCount }, (_, option) => ({
-        address: MARKET_ADDRESS,
-        abi: MARKET_ABI,
-        functionName: "getOutcomeToken",
-        args: [BigInt(marketId ?? 0), BigInt(option)],
-      })),
-      {
-        address: MARKET_ADDRESS,
-        abi: MARKET_ABI,
-        functionName: "previewClaim",
-        args: [BigInt(marketId ?? 0), address ?? ZERO],
-      },
-    ],
-    query: { enabled: enabled && optionCount > 0 },
-  });
-
-  let market: MarketDetail | null = null;
-  if (marketRaw && poolsAndPosition && marketId !== undefined) {
-    const [question, opts, closeTime, status, totalPool, winningOption, platformFee, prizePool, category] = marketRaw as [
-      string,
-      string[],
-      bigint,
-      number,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      string
-    ];
-    const optionPools = poolsAndPosition.slice(0, optionCount).map((r) => (r.result as bigint) ?? 0n);
-    const userContributions = poolsAndPosition.slice(optionCount, optionCount * 2).map((r) => (r.result as bigint) ?? 0n);
-    const outcomeTokens = poolsAndPosition.slice(optionCount * 2, optionCount * 3).map((r) => {
-      const result = r.result as [string, string] | undefined;
-      return { token: (result?.[0] ?? ZERO) as `0x${string}`, pair: (result?.[1] ?? ZERO) as `0x${string}` };
-    });
-    const previewClaim = (poolsAndPosition[optionCount * 3]?.result as bigint) ?? 0n;
-
-    market = {
-      id: marketId,
-      question,
-      options: opts,
-      closeTime,
-      status: status as MarketStatus,
-      totalPool,
-      winningOption,
-      platformFee,
-      prizePool,
-      category,
-      optionPools,
-      userContributions,
-      previewClaim,
-      outcomeTokens,
+  useEffect(() => {
+    const onUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ marketId?: number }>;
+      if (!customEvent.detail?.marketId || customEvent.detail.marketId === marketId) {
+        setLocalVersion((v) => v + 1);
+      }
     };
+    window.addEventListener("campus-market-update", onUpdate);
+    return () => window.removeEventListener("campus-market-update", onUpdate);
+  }, [marketId]);
+
+  if (marketId === undefined) {
+    return { market: null, isLoading: false, refetch: () => {} };
   }
 
-  const refetch = () => {
-    refetchMarket();
-    refetchPools();
+  const campusMarket = getCampusMarket(marketId);
+  const userInv = getUserInvestmentForMarket(marketId);
+
+  if (!campusMarket) {
+    return { market: null, isLoading: false, refetch: () => {} };
+  }
+
+  const platformFee = (campusMarket.totalPool * BigInt(campusMarket.platformFeeBps)) / 10000n;
+  const prizePool = campusMarket.totalPool - platformFee;
+
+  const userContributions = campusMarket.options.map((_, idx) =>
+    userInv && userInv.optionIndex === idx ? userInv.amount : 0n
+  );
+
+  const outcomeTokens: OutcomeTokenInfo[] = campusMarket.options.map(() => ({
+    token: ZERO,
+    pair: ZERO,
+  }));
+
+  const market: MarketDetail = {
+    id: campusMarket.id,
+    question: campusMarket.question,
+    options: campusMarket.options,
+    closeTime: campusMarket.closeTime,
+    status: campusMarket.status,
+    totalPool: campusMarket.totalPool,
+    winningOption: campusMarket.winningOption ?? 0n,
+    platformFee,
+    prizePool,
+    category: campusMarket.category,
+    optionPools: campusMarket.optionPools,
+    userContributions,
+    previewClaim: 0n,
+    outcomeTokens,
+    studentCount: campusMarket.studentCount,
+    optionStudentCounts: campusMarket.optionStudentCounts,
+    resultAnnouncement: campusMarket.resultAnnouncement,
+    resultAnnouncementTime: campusMarket.resultAnnouncementTime,
+    resolutionOracle: campusMarket.resolutionOracle,
+    userInvested: !!userInv,
+    userInvestedAmount: userInv?.amount,
+    userInvestedOption: userInv?.optionIndex,
+    userInvestedOptionName: userInv?.optionName,
+    isDemo: true,
   };
 
-  return { market, isLoading: marketLoading || poolsLoading, refetch };
+  return {
+    market,
+    isLoading: false,
+    refetch: () => setLocalVersion((v) => v + 1),
+  };
 }

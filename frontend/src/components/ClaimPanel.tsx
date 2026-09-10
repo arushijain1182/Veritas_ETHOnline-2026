@@ -1,5 +1,5 @@
 import { useAccount } from "wagmi";
-import { MARKET_ABI, MARKET_ADDRESS } from "../config/contracts";
+import { IS_DEMO_MODE, MARKET_ABI, MARKET_ADDRESS } from "../config/contracts";
 import { useTx } from "../hooks/useTx";
 import type { MarketDetail } from "../hooks/useMarket";
 import { formatUsdc } from "../lib/format";
@@ -11,7 +11,7 @@ export function ClaimPanel({ market, onDone }: { market: MarketDetail; onDone: (
 
   const winningOption = Number(market.winningOption);
   const yourContribution = market.userContributions[winningOption] ?? 0n;
-  const canClaim = isConnected && market.previewClaim > 0n;
+  const canClaim = (IS_DEMO_MODE || isConnected) && market.previewClaim > 0n;
   // previewClaim reflects the *current* winning-token balance, not who
   // originally bet — payouts follow the (transferable) token, see
   // OutcomeToken.sol. So "nothing to claim" covers both "never backed the
@@ -20,12 +20,14 @@ export function ClaimPanel({ market, onDone }: { market: MarketDetail; onDone: (
   const everHadWinningStake = yourContribution > 0n;
 
   async function handleClaim() {
-    await claimTx.send({
-      address: MARKET_ADDRESS,
-      abi: MARKET_ABI,
-      functionName: "claim",
-      args: [BigInt(market.id)],
-    });
+    if (!IS_DEMO_MODE) {
+      await claimTx.send({
+        address: MARKET_ADDRESS,
+        abi: MARKET_ABI,
+        functionName: "claim",
+        args: [BigInt(market.id)],
+      });
+    }
     onDone();
   }
 

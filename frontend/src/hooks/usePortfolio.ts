@@ -1,6 +1,7 @@
-import { useAccount, useReadContracts } from "wagmi";
-import { MARKET_ABI, MARKET_ADDRESS, MarketStatus } from "../config/contracts";
-import { useMarkets } from "./useMarkets";
+import { useState, useEffect } from "react";
+import { useAccount } from "wagmi";
+import { MarketStatus } from "../config/contracts";
+import { getUserInvestments, getCampusMarkets } from "../config/campusMarkets";
 
 export interface PortfolioEntry {
   marketId: number;
@@ -9,83 +10,68 @@ export interface PortfolioEntry {
   status: MarketStatus;
   options: string[];
   closeTime: bigint;
-  totalPool: bigint; // Total money college has invested in this market till now
-  optionPools: bigint[]; // Money invested in each option across the college
+  totalPool: bigint;
+  optionPools: bigint[];
   prizePool: bigint;
   platformFee: bigint;
   winningOption: bigint;
-  contributions: bigint[]; // per option, this user's original stake
+  contributions: bigint[];
   totalContribution: bigint;
-  claimable: bigint; // previewClaim — 0 if not resolved, not a winner, or already claimed
+  claimable: bigint;
+  studentCount?: number;
+  resultAnnouncement?: string;
+  resultAnnouncementTime?: bigint;
+  chosenOptionName?: string;
 }
 
-const ZERO = "0x0000000000000000000000000000000000000000" as const;
-
-/** The connected user's positions across every market — "check your
- * balance / winnings" in one place, rather than having to open each
- * market individually. */
+/** The connected/demo user's positions across every campus prediction market.
+ * Resolves synchronously from local campus market data and demo investments.
+ */
 export function usePortfolio() {
-  const { address } = useAccount();
-  const { markets, isLoading: marketsLoading, refetch: refetchMarkets } = useMarkets();
+  const { isConnected } = useAccount();
+  const [, setLocalVersion] = useState(0);
 
-  const marketsWithBets = markets; // filtered client-side below once contributions are known
+  useEffect(() => {
+    const onUpdate = () => setLocalVersion((v) => v + 1);
+    window.addEventListener("campus-market-update", onUpdate);
+    return () => window.removeEventListener("campus-market-update", onUpdate);
+  }, []);
 
-  const {
-    data,
-    isLoading: positionsLoading,
-    refetch: refetchPositions,
-  } = useReadContracts({
-    contracts: [
-      ...marketsWithBets.flatMap((m) =>
-        m.options.map((_, option) => ({
-          address: MARKET_ADDRESS,
-          abi: MARKET_ABI,
-          functionName: "userContribution",
-          args: [address ?? ZERO, BigInt(m.id), BigInt(option)],
-        }))
-      ),
-      ...marketsWithBets.map((m) => ({
-        address: MARKET_ADDRESS,
-        abi: MARKET_ABI,
-        functionName: "previewClaim",
-        args: [BigInt(m.id), address ?? ZERO],
-      })),
-    ],
-    query: { enabled: !!address && marketsWithBets.length > 0 },
-  });
+  const userInvestments = getUserInvestments();
+  const campusMarkets = getCampusMarkets();
 
-  let entries: PortfolioEntry[] = [];
-  if (data && address) {
-    let cursor = 0;
-    const perMarketContributions = marketsWithBets.map((m) => {
-      const contributions = m.options.map(() => (data[cursor++]?.result as bigint) ?? 0n);
-      return contributions;
-    });
-    const claimables = marketsWithBets.map((_, i) => (data[cursor + i]?.result as bigint) ?? 0n);
+  const entries: PortfolioEntry[] = campusMarkets
+    .map((cm) => {
+      const userInv = userInvestments.find((inv) => inv.marketId === cm.id);
+      const contributions = cm.options.map((_, optIdx) =>
+        userInv && userInv.optionIndex === optIdx ? userInv.amount : 0n
+      );
+      const totalContribution = contributions.reduce((a, b) => a + b, 0n);
+      const platformFee = (cm.totalPool * BigInt(cm.platformFeeBps)) / 10000n;
+      const prizePool = cm.totalPool - platformFee;
 
-    entries = marketsWithBets
-      .map((m, i) => {
-        const contributions = perMarketContributions[i];
-        const totalContribution = contributions.reduce((a, b) => a + b, 0n);
-        return {
-          marketId: m.id,
-          question: m.question,
-          category: m.category,
-          status: m.status,
-          options: m.options,
-          closeTime: m.closeTime,
-          totalPool: m.totalPool,
-          optionPools: m.optionPools,
-          prizePool: m.prizePool,
-          platformFee: m.platformFee,
-          winningOption: m.winningOption,
-          contributions,
-          totalContribution,
-          claimable: claimables[i],
-        };
-      })
-      .filter((e) => e.totalContribution > 0n || e.claimable > 0n);
-  }
+      return {
+        marketId: cm.id,
+        question: cm.question,
+        category: cm.category,
+        status: cm.status,
+        options: cm.options,
+        closeTime: cm.closeTime,
+        totalPool: cm.totalPool,
+        optionPools: cm.optionPools,
+        prizePool,
+        platformFee,
+        winningOption: cm.winningOption ?? 0n,
+        contributions,
+        totalContribution,
+        claimable: 0n,
+        studentCount: cm.studentCount,
+        resultAnnouncement: cm.resultAnnouncement,
+        resultAnnouncementTime: cm.resultAnnouncementTime,
+        chosenOptionName: userInv?.optionName,
+      };
+    })
+    .filter((e) => e.totalContribution > 0n);
 
   const totalInvested = entries.reduce((sum, e) => sum + e.totalContribution, 0n);
   const totalClaimable = entries.reduce((sum, e) => sum + e.claimable, 0n);
@@ -98,10 +84,8 @@ export function usePortfolio() {
     totalClaimable,
     activeCount,
     resolvedCount,
-    isLoading: marketsLoading || positionsLoading,
-    refetch: () => {
-      refetchMarkets();
-      refetchPositions();
-    },
+    isLoading: false,
+    isConnected,
+    refetch: () => setLocalVersion((v) => v + 1),
   };
 }
