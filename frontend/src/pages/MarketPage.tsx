@@ -8,7 +8,7 @@ import { SwapBetForm } from "../components/SwapBetForm";
 import { ClaimPanel } from "../components/ClaimPanel";
 import { TxStatus } from "../components/TxStatus";
 import { formatAddress, formatCloseTime, formatPercent, formatUsdc, formatRelativeTime } from "../lib/format";
-import { MARKET_ABI, MARKET_ADDRESS, MarketStatus, CATEGORY_ICON, isDeploymentConfigured } from "../config/contracts";
+import { IS_DEMO_MODE, MARKET_ABI, MARKET_ADDRESS, MarketStatus, CATEGORY_ICON } from "../config/contracts";
 
 const OPTION_COLORS = [
   "#3182ce", // Blue
@@ -27,18 +27,19 @@ export function MarketPage() {
   const [betTab, setBetTab] = useState<"usdc" | "eth">("usdc");
   const closeTx = useTx();
 
-  if (!isDeploymentConfigured) return null;
   if (isLoading || !market) return <p className="empty-state">Loading market details...</p>;
 
   const canClose = market.status === MarketStatus.OPEN && Date.now() >= Number(market.closeTime) * 1000;
 
   async function handleClose() {
-    await closeTx.send({
-      address: MARKET_ADDRESS,
-      abi: MARKET_ABI,
-      functionName: "closeMarket",
-      args: [BigInt(market!.id)],
-    });
+    if (!IS_DEMO_MODE) {
+      await closeTx.send({
+        address: MARKET_ADDRESS,
+        abi: MARKET_ABI,
+        functionName: "closeMarket",
+        args: [BigInt(market!.id)],
+      });
+    }
     refetch();
   }
 
@@ -88,6 +89,7 @@ export function MarketPage() {
                 {CATEGORY_ICON[market.category] ?? "\u{1F4CC}"} {market.category}
               </span>
             )}
+            <span className="demo-badge">Campus Demo Market</span>
             <span className="oracle-badge">
               🔗 {market.resolutionOracle ?? "Chainlink CRE Verified"}
             </span>

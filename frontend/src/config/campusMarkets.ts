@@ -343,6 +343,42 @@ export function recordCampusBet(marketId: number, optionIndex: number, amount: b
   }
 }
 
+export function createCampusMarket(
+  question: string,
+  options: string[],
+  category: string,
+  closeTime: bigint
+): number {
+  const markets = getCampusMarkets();
+  const nextId = markets.length > 0 ? Math.max(...markets.map((m) => m.id)) + 1 : 1;
+  const newMarket: CampusMarket = {
+    id: nextId,
+    question,
+    options,
+    category,
+    closeTime,
+    resultAnnouncementTime: closeTime + 7200n,
+    resultAnnouncement:
+      new Date(Number(closeTime + 7200n) * 1000).toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }) + " (IITD Student Affairs & Council Declaration)",
+    resolutionOracle: "Chainlink CRE Verified Oracle & SAC / BSA Campus Council",
+    totalPool: 0n,
+    optionPools: options.map(() => 0n),
+    studentCount: 0,
+    optionStudentCounts: options.map(() => 0),
+    status: MarketStatus.OPEN,
+    platformFeeBps: 1000,
+  };
+  markets.push(newMarket);
+  localStorage.setItem(STORAGE_KEY_MARKETS, serializeBigInts(markets));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("campus-market-update", { detail: { marketId: nextId } }));
+  }
+  return nextId;
+}
+
 export function resetCampusMarketsToDefaults(): void {
   localStorage.setItem(STORAGE_KEY_MARKETS, serializeBigInts(INITIAL_CAMPUS_MARKETS));
   localStorage.setItem(STORAGE_KEY_INVESTMENTS, serializeBigInts(INITIAL_USER_INVESTMENTS));
@@ -350,3 +386,4 @@ export function resetCampusMarketsToDefaults(): void {
     window.dispatchEvent(new CustomEvent("campus-market-update"));
   }
 }
+

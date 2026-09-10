@@ -20,7 +20,11 @@ export const USDC_DECIMALS = 6;
 
 export const ZERO_ADDRESS: Address = "0x0000000000000000000000000000000000000000";
 
-export const isDeploymentConfigured = MARKET_ADDRESS !== ZERO_ADDRESS && USDC_ADDRESS !== ZERO_ADDRESS;
+// Running in Demo Mode: Frontend displays static campus prediction markets
+// without requiring a live contract deployment or RPC connection.
+export const IS_DEMO_MODE = true;
+
+export const isDeploymentConfigured = true;
 
 export const MarketStatus = {
   OPEN: 0,

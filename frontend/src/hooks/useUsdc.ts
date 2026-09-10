@@ -1,5 +1,5 @@
 import { useAccount, useBalance, useReadContract } from "wagmi";
-import { MARKET_ADDRESS, USDC_ABI, USDC_ADDRESS } from "../config/contracts";
+import { IS_DEMO_MODE, MARKET_ADDRESS, USDC_ABI, USDC_ADDRESS } from "../config/contracts";
 
 /** Connected user's USDC balance + allowance for the Market contract. */
 export function useUsdc() {
@@ -10,7 +10,7 @@ export function useUsdc() {
     abi: USDC_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !IS_DEMO_MODE && !!address },
   });
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -18,18 +18,23 @@ export function useUsdc() {
     abi: USDC_ABI,
     functionName: "allowance",
     args: address ? [address, MARKET_ADDRESS] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !IS_DEMO_MODE && !!address },
   });
 
-  const { data: ethBalance } = useBalance({ address });
+  const { data: ethBalance } = useBalance({
+    address,
+    query: { enabled: !IS_DEMO_MODE && !!address },
+  });
 
   return {
-    usdcBalance: (balance as bigint | undefined) ?? 0n,
-    allowance: (allowance as bigint | undefined) ?? 0n,
+    usdcBalance: IS_DEMO_MODE ? 1000n * 1_000_000n : ((balance as bigint | undefined) ?? 0n),
+    allowance: IS_DEMO_MODE ? 1_000_000n * 1_000_000n : ((allowance as bigint | undefined) ?? 0n),
     ethBalance: ethBalance?.value ?? 0n,
     refetch: () => {
-      refetchBalance();
-      refetchAllowance();
+      if (!IS_DEMO_MODE) {
+        refetchBalance();
+        refetchAllowance();
+      }
     },
   };
 }

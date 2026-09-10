@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { MARKET_ABI, MARKET_ADDRESS, USDC_ABI, USDC_ADDRESS } from "../config/contracts";
+import { IS_DEMO_MODE, MARKET_ABI, MARKET_ADDRESS, USDC_ABI, USDC_ADDRESS } from "../config/contracts";
 import { recordCampusBet, getCampusMarket } from "../config/campusMarkets";
 import { useTx } from "../hooks/useTx";
 import { useUsdc } from "../hooks/useUsdc";
@@ -28,8 +28,8 @@ export function BetForm({
   const betTx = useTx();
 
   const amount = parseUsdc(amountStr);
-  const needsApproval = isConnected && amount > 0n && allowance < amount;
-  const insufficientBalance = isConnected && amount > usdcBalance && usdcBalance > 0n;
+  const needsApproval = !IS_DEMO_MODE && isConnected && amount > 0n && allowance < amount;
+  const insufficientBalance = !IS_DEMO_MODE && isConnected && amount > usdcBalance && usdcBalance > 0n;
 
   // Real-time calculation of potential payout
   const campusM = getCampusMarket(marketId);
@@ -48,6 +48,7 @@ export function BetForm({
   }
 
   async function handleApprove() {
+    if (IS_DEMO_MODE) return;
     await approveTx.send({
       address: USDC_ADDRESS,
       abi: USDC_ABI,
@@ -60,7 +61,7 @@ export function BetForm({
   async function handleBet() {
     if (amount <= 0n) return;
 
-    if (isConnected) {
+    if (!IS_DEMO_MODE && isConnected) {
       try {
         await betTx.send({
           address: MARKET_ADDRESS,
@@ -69,14 +70,16 @@ export function BetForm({
           args: [BigInt(marketId), BigInt(option), amount],
         });
       } catch (err) {
-        console.warn("On-chain bet was not submitted or rejected, applying campus stake locally:", err);
+        console.warn("On-chain bet was not submitted or rejected:", err);
       }
     }
 
     // Always record locally in campus markets state so UI updates in real time
     recordCampusBet(marketId, option, amount);
     setSuccessMsg(
-      `🎉 Successfully invested ${formatUsdc(amount)} on ${options[option]}! Your position is now active.`
+      IS_DEMO_MODE
+        ? `🎉 Demo Investment Placed: Invested ${formatUsdc(amount)} on ${options[option]}! Recorded in local demo state.`
+        : `🎉 Successfully invested ${formatUsdc(amount)} on ${options[option]}! Your position is now active.`
     );
     setAmountStr("");
     refetch();

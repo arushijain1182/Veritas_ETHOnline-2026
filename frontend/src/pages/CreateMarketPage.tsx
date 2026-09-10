@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount, useReadContract } from "wagmi";
-import { CATEGORIES, CATEGORY_ICON, MARKET_ABI, MARKET_ADDRESS, isDeploymentConfigured } from "../config/contracts";
+import { CATEGORIES, CATEGORY_ICON, IS_DEMO_MODE, MARKET_ABI, MARKET_ADDRESS, isDeploymentConfigured } from "../config/contracts";
+import { createCampusMarket } from "../config/campusMarkets";
 import { useTx } from "../hooks/useTx";
 import { TxStatus } from "../components/TxStatus";
 
@@ -19,9 +20,9 @@ export function CreateMarketPage() {
     address: MARKET_ADDRESS,
     abi: MARKET_ABI,
     functionName: "owner",
-    query: { enabled: isDeploymentConfigured },
+    query: { enabled: !IS_DEMO_MODE && isDeploymentConfigured },
   });
-  const isOwner = !!address && !!owner && (owner as string).toLowerCase() === address.toLowerCase();
+  const isOwner = IS_DEMO_MODE || (!!address && !!owner && (owner as string).toLowerCase() === address.toLowerCase());
 
   const [question, setQuestion] = useState("Who wins IITD Inter-Hostel Cricket Final?");
   const [options, setOptions] = useState(["HIMADRI", "KARAKORAM"]);
@@ -31,11 +32,13 @@ export function CreateMarketPage() {
 
   if (!isDeploymentConfigured) return null;
 
-  if (!isConnected) {
-    return <p className="empty-state">Connect your wallet to create a market.</p>;
-  }
-  if (!isOwner) {
-    return <p className="empty-state">Only the market owner can create markets.</p>;
+  if (!IS_DEMO_MODE) {
+    if (!isConnected) {
+      return <p className="empty-state">Connect your wallet to create a market.</p>;
+    }
+    if (!isOwner) {
+      return <p className="empty-state">Only the market owner can create markets.</p>;
+    }
   }
 
   function updateOption(i: number, value: string) {
@@ -46,6 +49,13 @@ export function CreateMarketPage() {
     e.preventDefault();
     const closeTime = BigInt(Math.floor(new Date(closeTimeLocal).getTime() / 1000));
     const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
+
+    if (IS_DEMO_MODE) {
+      const newId = createCampusMarket(question.trim(), cleanOptions, category, closeTime);
+      navigate(`/market/${newId}`);
+      return;
+    }
+
     const hash = await createTx.send({
       address: MARKET_ADDRESS,
       abi: MARKET_ABI,
@@ -60,6 +70,11 @@ export function CreateMarketPage() {
   return (
     <form className="create-market" onSubmit={handleCreate}>
       <h1>New Market</h1>
+      {IS_DEMO_MODE && (
+        <p className="bet-form__hint" style={{ color: "var(--color-primary-light, #38bdf8)", marginBottom: "1rem" }}>
+          ℹ️ <strong>Campus Demo Mode:</strong> Creating a market will save it locally to your browser and make it immediately tradable in the demo list.
+        </p>
+      )}
 
       <label>
         <span>Question</span>

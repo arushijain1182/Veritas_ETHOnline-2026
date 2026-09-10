@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { parseEther } from "viem";
 import { useAccount, useReadContract } from "wagmi";
-import { MARKET_ABI, MARKET_ADDRESS } from "../config/contracts";
+import { IS_DEMO_MODE, MARKET_ABI, MARKET_ADDRESS } from "../config/contracts";
 import { useTx } from "../hooks/useTx";
 import { useUsdc } from "../hooks/useUsdc";
 import { formatUsdc } from "../lib/format";
@@ -40,7 +40,7 @@ export function SwapBetForm({
     abi: MARKET_ABI,
     functionName: "quoteETHForUSDC",
     args: [ethAmount],
-    query: { enabled: ethAmount > 0n },
+    query: { enabled: !IS_DEMO_MODE && ethAmount > 0n },
   });
 
   const quotedUsdc = (quote as bigint | undefined) ?? 0n;
@@ -48,6 +48,7 @@ export function SwapBetForm({
   const insufficientBalance = ethAmount > ethBalance;
 
   async function handleSwapAndBet() {
+    if (IS_DEMO_MODE) return;
     await swapBetTx.send({
       address: MARKET_ADDRESS,
       abi: MARKET_ABI,
@@ -58,6 +59,19 @@ export function SwapBetForm({
     setEthAmountStr("");
     refetch();
     onDone();
+  }
+
+  if (IS_DEMO_MODE) {
+    return (
+      <div className="bet-form">
+        <p className="bet-form__hint" style={{ color: "var(--color-primary-light, #38bdf8)" }}>
+          ℹ️ <strong>Campus Demo Mode:</strong> Uniswap V2 live on-chain swaps are disabled in demo mode.
+        </p>
+        <p style={{ fontSize: "0.9rem", color: "var(--color-text-dim)", lineHeight: "1.5" }}>
+          Please switch to the <strong>Direct USDC Prediction</strong> tab above to simulate an investment directly with campus markets.
+        </p>
+      </div>
+    );
   }
 
   return (

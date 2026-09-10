@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useMarkets } from "../hooks/useMarkets";
 import { StatusBadge } from "../components/StatusBadge";
 import { formatPercent, formatUsdc, formatRelativeTime } from "../lib/format";
-import { CATEGORY_ICON, isDeploymentConfigured } from "../config/contracts";
+import { CATEGORY_ICON } from "../config/contracts";
 
 const OPTION_COLORS = [
   "#3182ce", // Blue
@@ -18,10 +18,6 @@ const OPTION_COLORS = [
 export function MarketListPage() {
   const { markets, isLoading } = useMarkets();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-
-  if (!isDeploymentConfigured) {
-    return null; // Layout already shows the banner
-  }
 
   if (isLoading) {
     return <p className="empty-state">Loading campus prediction markets...</p>;
@@ -76,6 +72,7 @@ export function MarketListPage() {
                           {CATEGORY_ICON[m.category] ?? "\u{1F4CC}"} {m.category}
                         </span>
                       )}
+                      <span className="demo-badge">Campus Demo</span>
                       <span className="market-card__announcement-tag" title={m.resultAnnouncement}>
                         📅 Result: {formatRelativeTime(m.resultAnnouncementTime ?? m.closeTime)}
                       </span>
