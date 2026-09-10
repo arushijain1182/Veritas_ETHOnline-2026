@@ -6,10 +6,21 @@ import { useUsdc } from "../hooks/useUsdc";
 import { useTx } from "../hooks/useTx";
 import { StatusBadge } from "../components/StatusBadge";
 import { TxStatus } from "../components/TxStatus";
+import { ConnectWallet } from "../components/ConnectWallet";
 import { CATEGORY_ICON, isDeploymentConfigured, MARKET_ABI, MARKET_ADDRESS, MarketStatus } from "../config/contracts";
 import { formatCloseTime, formatPercent, formatRelativeTime, formatUsdc } from "../lib/format";
 
 type FilterTab = "all" | "active" | "claimable" | "resolved";
+
+const OPTION_COLORS = [
+  "#3182ce", // Blue
+  "#e53e3e", // Red
+  "#38a169", // Green
+  "#805ad5", // Purple
+  "#dd6b20", // Orange
+  "#319795", // Teal
+  "#d53f8c", // Pink
+];
 
 export function PortfolioPage() {
   const { isConnected } = useAccount();
@@ -22,10 +33,6 @@ export function PortfolioPage() {
   const claimTx = useTx();
 
   if (!isDeploymentConfigured) return null;
-
-  if (!isConnected) {
-    return <p className="empty-state">Connect your wallet to see your prediction history, total investments, and payouts.</p>;
-  }
 
   function toggleExpand(id: number) {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -56,9 +63,34 @@ export function PortfolioPage() {
       <div className="portfolio__header">
         <h1>User Portfolio &amp; Activity</h1>
         <p className="portfolio__subtitle">
-          Track your campus prediction investments, active odds, result dates, and claim winnings in real time.
+          Track your campus prediction investments, active odds, result announcement dates, and claim winnings in real time.
         </p>
       </div>
+
+      {/* Connection state banner */}
+      {!isConnected ? (
+        <div className="portfolio__mode-banner">
+          <div className="mode-banner__left">
+            <span className="mode-banner__icon">🎓</span>
+            <div>
+              <strong>Campus Student Profile Active</strong>
+              <p>Displaying your campus prediction market investments and tracking results.</p>
+            </div>
+          </div>
+          <ConnectWallet />
+        </div>
+      ) : (
+        <div className="portfolio__mode-banner portfolio__mode-banner--connected">
+          <div className="mode-banner__left">
+            <span className="mode-banner__icon">🟢</span>
+            <div>
+              <strong>Web3 Wallet Connected</strong>
+              <p>On-chain positions and smart contract settlements are synchronized.</p>
+            </div>
+          </div>
+          <span className="mode-banner__balance">Balance: {formatUsdc(usdcBalance)}</span>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* TOP-LEVEL METRICS SUMMARY GRID */}
@@ -67,7 +99,7 @@ export function PortfolioPage() {
         <div className="portfolio__stat-card">
           <span className="portfolio__stat-label">Total Money Invested</span>
           <span className="portfolio__stat-value">{formatUsdc(totalInvested)}</span>
-          <span className="portfolio__stat-meta">{entries.length} markets joined</span>
+          <span className="portfolio__stat-meta">{entries.length} campus markets backed</span>
         </div>
 
         <div className="portfolio__stat-card portfolio__stat-card--highlight">
@@ -79,7 +111,7 @@ export function PortfolioPage() {
         </div>
 
         <div className="portfolio__stat-card">
-          <span className="portfolio__stat-label">Active Bets</span>
+          <span className="portfolio__stat-label">Active Predictions</span>
           <span className="portfolio__stat-value">{activeCount}</span>
           <span className="portfolio__stat-meta">{resolvedCount} settled</span>
         </div>
@@ -87,7 +119,7 @@ export function PortfolioPage() {
         <div className="portfolio__stat-card">
           <span className="portfolio__stat-label">USDC Wallet Balance</span>
           <span className="portfolio__stat-value">{formatUsdc(usdcBalance)}</span>
-          <span className="portfolio__stat-meta">Available liquid capital</span>
+          <span className="portfolio__stat-meta">Liquid capital</span>
         </div>
       </div>
 
@@ -136,7 +168,7 @@ export function PortfolioPage() {
               : `No bets found in the "${activeTab}" category.`}
           </p>
           <Link to="/" className="btn btn--primary">
-            Explore Live Markets
+            Explore Live Campus Markets
           </Link>
         </div>
       ) : (
@@ -146,6 +178,8 @@ export function PortfolioPage() {
             const chosenOptionIndices = e.options
               .map((_, i) => i)
               .filter((i) => e.contributions[i] > 0n);
+
+            const resultTime = e.resultAnnouncementTime ?? e.closeTime;
 
             return (
               <div
@@ -162,7 +196,7 @@ export function PortfolioPage() {
                     <StatusBadge status={e.status} />
                   </div>
                   <span className="portfolio-card__toggle-hint">
-                    {isExpanded ? "Click to collapse &uarr;" : "Click for details &darr;"}
+                    {isExpanded ? "Click to collapse &uarr;" : "Click for % distribution & details &darr;"}
                   </span>
                 </div>
 
@@ -172,24 +206,25 @@ export function PortfolioPage() {
                 <div className="portfolio-card__quick-summary">
                   <div className="portfolio-card__quick-stat">
                     <span className="quick-stat-label">Your Stake:</span>
-                    <span className="quick-stat-val">{formatUsdc(e.totalContribution)}</span>
+                    <span className="quick-stat-val">
+                      <strong>{formatUsdc(e.totalContribution)}</strong> on{" "}
+                      <strong>{e.chosenOptionName ?? "Selected Option"}</strong>
+                    </span>
                   </div>
                   <div className="portfolio-card__quick-stat">
-                    <span className="quick-stat-label">Total College Pool:</span>
+                    <span className="quick-stat-label">Total Market Money:</span>
                     <span className="quick-stat-val">{formatUsdc(e.totalPool)}</span>
                   </div>
                   <div className="portfolio-card__quick-stat">
-                    <span className="quick-stat-label">Result Date:</span>
-                    <span className="quick-stat-val">{formatRelativeTime(e.closeTime)}</span>
+                    <span className="quick-stat-label">Students Invested:</span>
+                    <span className="quick-stat-val">👥 {e.studentCount ?? "—"}</span>
                   </div>
-                  {e.status === MarketStatus.RESOLVED && (
-                    <div className="portfolio-card__quick-stat portfolio-card__quick-stat--claim">
-                      <span className="quick-stat-label">Payout:</span>
-                      <span className="quick-stat-val quick-stat-val--highlight">
-                        {e.claimable > 0n ? formatUsdc(e.claimable) : "Claimed / None"}
-                      </span>
-                    </div>
-                  )}
+                  <div className="portfolio-card__quick-stat">
+                    <span className="quick-stat-label">Result Announcement:</span>
+                    <span className="quick-stat-val" title={e.resultAnnouncement}>
+                      📅 {formatRelativeTime(resultTime)}
+                    </span>
+                  </div>
                 </div>
 
                 {/* EXPANDABLE DETAILS DRAWER */}
@@ -204,7 +239,6 @@ export function PortfolioPage() {
                           const ongoingPct = formatPercent(optPool, e.totalPool);
                           const userPoolShare = formatPercent(userStake, optPool);
 
-                          // Potential payout calculation: (UserStake * (TotalPool * 0.90)) / OptionPool
                           let estimatedPayout = 0n;
                           let multiplierStr = "-";
                           if (optPool > 0n && e.totalPool > 0n) {
@@ -223,23 +257,22 @@ export function PortfolioPage() {
                                 <span className="chosen-stake">Invested: {formatUsdc(userStake)}</span>
                               </div>
 
-                              {/* ONGOING PERCENTAGE & POOL BAR */}
                               <div className="chosen-option-card__progress">
                                 <div className="chosen-progress-meta">
-                                  <span>Ongoing Probability: <strong>{ongoingPct}</strong></span>
-                                  <span>Total Option Pool: {formatUsdc(optPool)} ({userPoolShare} yours)</span>
+                                  <span>Market % Distribution: <strong>{ongoingPct}</strong></span>
+                                  <span>Option Pool: {formatUsdc(optPool)} ({userPoolShare} yours)</span>
                                 </div>
                                 <div className="market-page__pool-bar">
                                   <div
                                     className="market-page__pool-bar-fill"
                                     style={{
                                       width: e.totalPool > 0n ? `${Number((optPool * 100n) / e.totalPool)}%` : "0%",
+                                      backgroundColor: OPTION_COLORS[optIdx % OPTION_COLORS.length],
                                     }}
                                   />
                                 </div>
                               </div>
 
-                              {/* ESTIMATED POTENTIAL RETURN */}
                               {e.status !== MarketStatus.RESOLVED && (
                                 <div className="chosen-potential-payout">
                                   <span>Estimated Return if {e.options[optIdx]} wins:</span>
@@ -256,32 +289,34 @@ export function PortfolioPage() {
 
                     {/* MARKET & COLLEGE-WIDE TOTAL METRICS */}
                     <div className="drawer-section">
-                      <h4 className="drawer-title">2. Market Statistics &amp; College Participation</h4>
+                      <h4 className="drawer-title">2. Market Statistics &amp; Result Announcement</h4>
                       <dl className="drawer-stats-grid">
                         <div className="drawer-stat-item">
-                          <dt>Total College Money Invested</dt>
+                          <dt>Total Money on Market</dt>
                           <dd>
                             <strong>{formatUsdc(e.totalPool)}</strong> across campus
                           </dd>
                         </div>
                         <div className="drawer-stat-item">
-                          <dt>Result Declaration Date &amp; Time</dt>
+                          <dt>Students Invested</dt>
                           <dd>
-                            {formatCloseTime(e.closeTime)} ({formatRelativeTime(e.closeTime)})
+                            <strong>👥 {e.studentCount ?? "—"} students</strong>
                           </dd>
                         </div>
                         <div className="drawer-stat-item">
-                          <dt>Prize Pool (90%)</dt>
-                          <dd>{formatUsdc(e.prizePool > 0n ? e.prizePool : (e.totalPool * 90n) / 100n)}</dd>
+                          <dt>Result Announcement Date</dt>
+                          <dd>
+                            {formatCloseTime(resultTime)} ({formatRelativeTime(resultTime)})
+                          </dd>
                         </div>
                         <div className="drawer-stat-item">
-                          <dt>Platform Fee (10%)</dt>
-                          <dd>{formatUsdc(e.platformFee > 0n ? e.platformFee : (e.totalPool * 10n) / 100n)}</dd>
+                          <dt>Announcement Context</dt>
+                          <dd>{e.resultAnnouncement ?? "Official declaration upon event completion"}</dd>
                         </div>
                       </dl>
                     </div>
 
-                    {/* RESOLUTION STATUS & 1-CLICK CLAIM */}
+                    {/* RESOLUTION STATUS & CLAIM */}
                     {e.status === MarketStatus.RESOLVED && (
                       <div className="drawer-section drawer-section--settlement">
                         <h4 className="drawer-title">3. Settlement &amp; Payout</h4>
@@ -324,7 +359,7 @@ export function PortfolioPage() {
                     {/* DRAWER FOOTER ACTIONS */}
                     <div className="drawer-footer">
                       <Link to={`/market/${e.marketId}`} className="btn btn--secondary btn--sm">
-                        View Full Market &amp; Secondary Order Book &rarr;
+                        View Full Market Page &rarr;
                       </Link>
                     </div>
                   </div>
