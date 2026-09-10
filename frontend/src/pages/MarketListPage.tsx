@@ -6,13 +6,13 @@ import { formatPercent, formatUsdc, formatRelativeTime } from "../lib/format";
 import { CATEGORY_ICON } from "../config/contracts";
 
 const OPTION_COLORS = [
-  "#3182ce", // Blue
-  "#e53e3e", // Red
-  "#38a169", // Green
-  "#805ad5", // Purple
-  "#dd6b20", // Orange
-  "#319795", // Teal
-  "#d53f8c", // Pink
+  "#2563eb", // Blue
+  "#dc2626", // Red
+  "#059669", // Emerald
+  "#7c3aed", // Violet
+  "#d97706", // Amber
+  "#0891b2", // Cyan
+  "#db2777", // Pink
 ];
 
 export function MarketListPage() {
@@ -20,11 +20,21 @@ export function MarketListPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   if (isLoading) {
-    return <p className="empty-state">Loading campus prediction markets...</p>;
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner" />
+        <p className="loading-text">Loading campus prediction markets...</p>
+      </div>
+    );
   }
 
   if (markets.length === 0) {
-    return <p className="empty-state">No markets available.</p>;
+    return (
+      <div className="empty-state-card">
+        <h3>No markets available</h3>
+        <p>No active prediction markets were found at this time.</p>
+      </div>
+    );
   }
 
   const categories = Array.from(new Set(markets.map((m) => m.category).filter(Boolean)));
@@ -32,69 +42,116 @@ export function MarketListPage() {
 
   return (
     <div className="market-list-page">
-      {/* Category Navigation Pills */}
+      {/* Hero Header */}
+      <div className="page-hero">
+        <div className="page-hero__badge">IIT Delhi Campus Prediction Protocol</div>
+        <h1 className="page-hero__title">Explore Campus Markets</h1>
+        <p className="page-hero__sub">
+          Predict outcomes across inter-hostel championships, sports tournaments, and student council elections.
+          Stakes are pooled in pari-mutuel smart contracts and settled via Chainlink oracles.
+        </p>
+      </div>
+
+      {/* Category Navigation Bar */}
       {categories.length > 0 && (
-        <div className="category-filter">
-          <button
-            className={`category-pill ${activeCategory === null ? "category-pill--active" : ""}`}
-            onClick={() => setActiveCategory(null)}
-          >
-            All Markets ({markets.length})
-          </button>
-          {categories.map((c) => (
+        <div className="category-filter-wrapper">
+          <div className="category-filter" role="tablist">
             <button
-              key={c}
-              className={`category-pill ${activeCategory === c ? "category-pill--active" : ""}`}
-              onClick={() => setActiveCategory(c)}
+              type="button"
+              className={`category-pill ${activeCategory === null ? "category-pill--active" : ""}`}
+              onClick={() => setActiveCategory(null)}
             >
-              <span>{CATEGORY_ICON[c] ?? "\u{1F4CC}"}</span> {c} (
-              {markets.filter((m) => m.category === c).length})
+              <span>All Markets</span>
+              <span className="category-pill__count">{markets.length}</span>
             </button>
-          ))}
+            {categories.map((c) => {
+              const count = markets.filter((m) => m.category === c).length;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  className={`category-pill ${activeCategory === c ? "category-pill--active" : ""}`}
+                  onClick={() => setActiveCategory(c)}
+                >
+                  <span className="category-pill__icon">{CATEGORY_ICON[c] ?? "\u{1F4CC}"}</span>
+                  <span>{c}</span>
+                  <span className="category-pill__count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
+      {/* Markets Grid */}
       {visibleMarkets.length === 0 ? (
-        <p className="empty-state">No markets in this category yet.</p>
+        <div className="empty-state-card">
+          <h3>No markets found</h3>
+          <p>There are no markets currently open under the selected category.</p>
+        </div>
       ) : (
-        <div className="market-list">
+        <div className="markets-grid">
           {visibleMarkets.map((m) => {
             const hasUserInvested = !!m.userInvested && (m.userInvestedAmount ?? 0n) > 0n;
 
+            // Compute potential return for user's position
+            let userEstReturnStr = "";
+            let userReturnMultiplierStr = "";
+            if (hasUserInvested && m.userInvestedOption !== undefined) {
+              const chosenPool = m.optionPools[m.userInvestedOption] ?? 0n;
+              if (chosenPool > 0n && m.totalPool > 0n && (m.userInvestedAmount ?? 0n) > 0n) {
+                const prizePool = (m.totalPool * 90n) / 100n;
+                const payout = (m.userInvestedAmount! * prizePool) / chosenPool;
+                userEstReturnStr = formatUsdc(payout);
+                const mult = Number(payout) / Number(m.userInvestedAmount!);
+                userReturnMultiplierStr = `${mult.toFixed(2)}x`;
+              }
+            }
+
+            const resultTime = m.resultAnnouncementTime ?? m.closeTime;
+
             return (
               <Link to={`/market/${m.id}`} key={m.id} className="market-card">
-                {/* Header */}
-                <div className="market-card__header">
-                  <div className="market-card__title">
-                    <div className="market-card__badge-row">
-                      {m.category && (
-                        <span className="category-badge">
-                          {CATEGORY_ICON[m.category] ?? "\u{1F4CC}"} {m.category}
-                        </span>
-                      )}
-                      <span className="demo-badge">Campus Demo</span>
-                      <span className="market-card__announcement-tag" title={m.resultAnnouncement}>
-                        📅 Result: {formatRelativeTime(m.resultAnnouncementTime ?? m.closeTime)}
+                {/* Top Meta Bar */}
+                <div className="market-card__meta-bar">
+                  <div className="market-card__tags">
+                    {m.category && (
+                      <span className="tag-pill tag-pill--category">
+                        {CATEGORY_ICON[m.category] ?? "\u{1F4CC}"} {m.category}
                       </span>
-                    </div>
-                    <h2>{m.question}</h2>
+                    )}
+                    <StatusBadge status={m.status} />
                   </div>
-                  <StatusBadge status={m.status} />
+                  <span className="market-card__countdown" title={m.resultAnnouncement}>
+                    Announces {formatRelativeTime(resultTime)}
+                  </span>
                 </div>
 
-                {/* Highlight banner if user invested in this market */}
+                {/* Question */}
+                <h2 className="market-card__question">{m.question}</h2>
+
+                {/* User Position Indicator (Compact, Premium) */}
                 {hasUserInvested && (
-                  <div className="market-card__user-invested-banner">
-                    <span className="user-invested-badge">🎯 YOUR INVESTMENT</span>
-                    <span className="user-invested-details">
-                      <strong>{formatUsdc(m.userInvestedAmount)}</strong> on{" "}
-                      <strong>{m.userInvestedOptionName}</strong>
-                    </span>
+                  <div className="market-card__position-chip">
+                    <div className="position-chip__left">
+                      <span className="position-chip__indicator" />
+                      <span className="position-chip__text">
+                        <strong>{formatUsdc(m.userInvestedAmount)}</strong> on{" "}
+                        <span className="position-chip__hostel">{m.userInvestedOptionName}</span>
+                      </span>
+                    </div>
+                    {userEstReturnStr && (
+                      <div className="position-chip__right">
+                        <span className="position-chip__payout-label">Est. Win:</span>
+                        <strong className="position-chip__payout-val">{userEstReturnStr}</strong>
+                        <span className="position-chip__mult">({userReturnMultiplierStr})</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* % DISTRIBUTION Visual Segmented Bar */}
-                <div className="market-card__distribution-bar" title="Pool % Distribution">
+                {/* Horizontal Probability Distribution Bar */}
+                <div className="market-card__distribution-bar" title="Probability Distribution">
                   {m.options.map((opt, i) => {
                     const pool = m.optionPools[i] ?? 0n;
                     const pct = m.totalPool > 0n ? Number((pool * 1000n) / m.totalPool) / 10 : 0;
@@ -102,7 +159,7 @@ export function MarketListPage() {
                     return (
                       <div
                         key={opt}
-                        className="market-card__distribution-segment"
+                        className="distribution-bar__segment"
                         style={{
                           width: `${pct}%`,
                           backgroundColor: OPTION_COLORS[i % OPTION_COLORS.length],
@@ -113,8 +170,8 @@ export function MarketListPage() {
                   })}
                 </div>
 
-                {/* Options List with % DISTRIBUTION */}
-                <div className="market-card__options">
+                {/* Outcomes Breakdown */}
+                <div className="market-card__outcomes">
                   {m.options.map((option, i) => {
                     const pool = m.optionPools[i] ?? 0n;
                     const pct = formatPercent(pool, m.totalPool);
@@ -122,20 +179,20 @@ export function MarketListPage() {
 
                     return (
                       <div
-                        className={`market-card__option ${isUserPick ? "market-card__option--user-pick" : ""}`}
+                        className={`outcome-row ${isUserPick ? "outcome-row--user-pick" : ""}`}
                         key={option}
                       >
-                        <div className="market-card__option-left">
+                        <div className="outcome-row__left">
                           <span
-                            className="option-color-dot"
+                            className="outcome-dot"
                             style={{ backgroundColor: OPTION_COLORS[i % OPTION_COLORS.length] }}
                           />
-                          <span className="option-name">{option}</span>
-                          {isUserPick && <span className="user-pick-tag">Your Pick ✨</span>}
+                          <span className="outcome-name">{option}</span>
+                          {isUserPick && <span className="outcome-pick-badge">Your Pick</span>}
                         </div>
-                        <div className="market-card__option-right">
-                          <span className="market-card__option-amount">{formatUsdc(pool)}</span>
-                          <span className="market-card__option-pct">
+                        <div className="outcome-row__right">
+                          <span className="outcome-pool">{formatUsdc(pool)}</span>
+                          <span className="outcome-pct">
                             {m.status === 2 && Number(m.winningOption) === i ? "WON" : pct}
                           </span>
                         </div>
@@ -144,18 +201,22 @@ export function MarketListPage() {
                   })}
                 </div>
 
-                {/* Footer: Total Money & No. of Students Invested */}
+                {/* Card Footer: Metrics & CTA */}
                 <div className="market-card__footer">
-                  <div className="market-card__footer-stat">
-                    <span className="stat-label">Total Money on Market:</span>
-                    <strong className="stat-value">{formatUsdc(m.totalPool)}</strong>
+                  <div className="market-card__metrics">
+                    <div className="metric-item">
+                      <span className="metric-item__label">Total Pool:</span>
+                      <strong className="metric-item__val">{formatUsdc(m.totalPool)}</strong>
+                    </div>
+                    <span className="metric-dot">&bull;</span>
+                    <div className="metric-item">
+                      <span className="metric-item__label">Predictors:</span>
+                      <strong className="metric-item__val">{m.studentCount ?? 0}</strong>
+                    </div>
                   </div>
-                  <div className="market-card__footer-stat">
-                    <span className="stat-label">Students Invested:</span>
-                    <strong className="stat-value">
-                      👥 {m.studentCount ? `${m.studentCount} students` : "—"}
-                    </strong>
-                  </div>
+                  <span className="market-card__cta">
+                    View Market <span className="cta-arrow">&rarr;</span>
+                  </span>
                 </div>
               </Link>
             );
@@ -165,3 +226,4 @@ export function MarketListPage() {
     </div>
   );
 }
+

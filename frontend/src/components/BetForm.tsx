@@ -12,17 +12,27 @@ const QUICK_AMOUNTS = ["10", "25", "50", "100", "200"];
 export function BetForm({
   marketId,
   options,
+  selectedOption: controlledOption,
+  onSelectOption,
   onDone,
 }: {
   marketId: number;
   options: string[];
+  selectedOption?: number;
+  onSelectOption?: (idx: number) => void;
   onDone: () => void;
 }) {
   const { isConnected } = useAccount();
   const { usdcBalance, allowance, refetch } = useUsdc();
-  const [option, setOption] = useState(0);
+  const [internalOption, setInternalOption] = useState(0);
   const [amountStr, setAmountStr] = useState("");
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const option = controlledOption !== undefined ? controlledOption : internalOption;
+  const setOption = (idx: number) => {
+    if (onSelectOption) onSelectOption(idx);
+    setInternalOption(idx);
+  };
 
   const approveTx = useTx();
   const betTx = useTx();
@@ -78,7 +88,7 @@ export function BetForm({
     recordCampusBet(marketId, option, amount);
     setSuccessMsg(
       IS_DEMO_MODE
-        ? `🎉 Demo Investment Placed: Invested ${formatUsdc(amount)} on ${options[option]}! Recorded in local demo state.`
+        ? `🎉 Demo Investment Placed: Invested ${formatUsdc(amount)} on ${options[option]}! Recorded in demo state.`
         : `🎉 Successfully invested ${formatUsdc(amount)} on ${options[option]}! Your position is now active.`
     );
     setAmountStr("");
@@ -92,50 +102,69 @@ export function BetForm({
   }
 
   return (
-    <div className="bet-form">
-      {successMsg && (
-        <div className="bet-form__success-banner">
-          {successMsg}
-        </div>
-      )}
+    <div className="trade-form">
+      {successMsg && <div className="trade-form__success-toast">{successMsg}</div>}
 
-      <div className="bet-form__section-label">Select Outcome / Hostel:</div>
-      <div className="bet-form__options">
-        {options.map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            className={`option-pill ${option === i ? "option-pill--active" : ""}`}
-            onClick={() => setOption(i)}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Outcome Selector */}
+      <div className="trade-form__group">
+        <label className="trade-form__label">Choose Competing Hostel:</label>
+        <div className="trade-options-grid">
+          {options.map((label, i) => {
+            const optPool = campusM?.optionPools[i] ?? 0n;
+            const pctStr =
+              campusM && campusM.totalPool > 0n
+                ? `${Math.round(Number((optPool * 100n) / campusM.totalPool))}%`
+                : "—";
+
+            return (
+              <button
+                key={label}
+                type="button"
+                className={`trade-option-pill ${option === i ? "trade-option-pill--active" : ""}`}
+                onClick={() => setOption(i)}
+              >
+                <span className="trade-option-pill__name">{label}</span>
+                <span className="trade-option-pill__pct">{pctStr}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="bet-form__amount-wrapper">
-        <label className="bet-form__amount">
-          <span>Investment Amount (USDC)</span>
+      {/* Investment Amount Input */}
+      <div className="trade-form__group">
+        <div className="trade-form__label-row">
+          <label htmlFor="amount-input" className="trade-form__label">
+            Investment Amount
+          </label>
+          <span className="trade-form__unit-tag">USDC</span>
+        </div>
+
+        <div className="trade-input-wrapper">
+          <span className="trade-input-prefix">$</span>
           <input
+            id="amount-input"
             type="number"
             min="1"
             step="1"
-            placeholder="e.g. 50"
+            placeholder="0"
+            className="trade-input"
             value={amountStr}
             onChange={(e) => {
               setAmountStr(e.target.value);
               setSuccessMsg(null);
             }}
           />
-        </label>
+          <span className="trade-input-suffix">USDC</span>
+        </div>
 
-        {/* Quick Amount Selector Buttons */}
-        <div className="quick-amount-buttons">
+        {/* Quick Amount Selector */}
+        <div className="quick-amount-bar">
           {QUICK_AMOUNTS.map((q) => (
             <button
               key={q}
               type="button"
-              className="quick-amount-btn"
+              className="quick-amount-pill"
               onClick={() => {
                 setAmountStr(q);
                 setSuccessMsg(null);
@@ -147,26 +176,32 @@ export function BetForm({
         </div>
       </div>
 
-      {/* Live Estimated Return Calculator */}
+      {/* Live Order Return Preview */}
       {amount > 0n && (
-        <div className="bet-form__payout-preview">
-          <div className="payout-preview__row">
-            <span>Potential Payout if <strong>{options[option]}</strong> wins:</span>
-            <strong className="payout-preview__value">{potentialPayoutStr}</strong>
+        <div className="trade-summary-card">
+          <div className="trade-summary-row">
+            <span className="trade-summary-label">Target Hostel:</span>
+            <strong className="trade-summary-val">{options[option]}</strong>
           </div>
-          <div className="payout-preview__sub">
-            Estimated Return Multiplier: <span className="multiplier-badge">{multiplierStr}</span> (90% prize pool distribution)
+          <div className="trade-summary-row">
+            <span className="trade-summary-label">Potential Payout:</span>
+            <strong className="trade-summary-val trade-summary-val--green">{potentialPayoutStr}</strong>
           </div>
+          <div className="trade-summary-row">
+            <span className="trade-summary-label">Implied Return:</span>
+            <span className="multiplier-badge">{multiplierStr}</span>
+          </div>
+          <p className="trade-summary-footnote">
+            Pari-mutuel return is calculated based on current pool distribution (90% prize pool).
+          </p>
         </div>
       )}
 
-      {isConnected && (
-        <p className="bet-form__balance">Your wallet balance: {formatUsdc(usdcBalance)}</p>
-      )}
-
+      {/* Action Button */}
       {needsApproval ? (
         <button
-          className="btn btn--primary btn--full"
+          type="button"
+          className="btn btn--primary btn--trade"
           disabled={amount === 0n || approveTx.phase === "signing" || approveTx.phase === "confirming"}
           onClick={handleApprove}
         >
@@ -174,13 +209,16 @@ export function BetForm({
         </button>
       ) : (
         <button
-          className="btn btn--primary btn--full"
+          type="button"
+          className="btn btn--primary btn--trade"
           disabled={amount === 0n || insufficientBalance || betTx.phase === "signing" || betTx.phase === "confirming"}
           onClick={handleBet}
         >
           {insufficientBalance
             ? "Insufficient balance"
-            : `Place Investment on ${options[option]}`}
+            : amount > 0n
+            ? `Invest $${amountStr} on ${options[option]}`
+            : `Select Amount to Invest`}
         </button>
       )}
 
@@ -194,3 +232,4 @@ export function BetForm({
     </div>
   );
 }
+

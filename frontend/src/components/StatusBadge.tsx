@@ -7,5 +7,11 @@ const LABEL: Record<MarketStatus, string> = {
 };
 
 export function StatusBadge({ status }: { status: MarketStatus }) {
-  return <span className={`status-badge status-badge--${LABEL[status].toLowerCase()}`}>{LABEL[status]}</span>;
+  const label = LABEL[status] ?? "Unknown";
+  return (
+    <span className={`status-badge status-badge--${label.toLowerCase()}`}>
+      <span className="status-badge__dot" />
+      <span>{label}</span>
+    </span>
+  );
 }

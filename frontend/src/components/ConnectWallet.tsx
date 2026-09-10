@@ -8,9 +8,15 @@ export function ConnectWallet() {
 
   if (isConnected && address) {
     return (
-      <div className="connect-wallet">
-        <span className="connect-wallet__address">{formatAddress(address)}</span>
-        <button className="btn btn--ghost" onClick={() => disconnect()}>
+      <div className="wallet-pill">
+        <span className="wallet-pill__dot" />
+        <span className="wallet-pill__address">{formatAddress(address)}</span>
+        <button
+          type="button"
+          className="wallet-pill__disconnect"
+          onClick={() => disconnect()}
+          title="Disconnect wallet"
+        >
           Disconnect
         </button>
       </div>
@@ -21,11 +27,11 @@ export function ConnectWallet() {
 
   return (
     <button
-      className="btn btn--primary"
+      className="btn btn--wallet"
       disabled={!injectedConnector || isPending}
       onClick={() => injectedConnector && connect({ connector: injectedConnector })}
     >
-      {isPending ? "Connecting..." : injectedConnector ? "Connect Wallet" : "No wallet found"}
+      {isPending ? "Connecting..." : injectedConnector ? "Connect Wallet" : "No wallet"}
     </button>
   );
 }
