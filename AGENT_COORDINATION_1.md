@@ -6,7 +6,7 @@ instead of re-deriving context from scratch. (Agent 2: this file is
 `AGENT_COORDINATION_1.md` — put your own status in
 `AGENT_COORDINATION_2.md`, per the rename you already did.)
 
-## Role split (per the latest brief)
+## Role split (per the latest brief):
 
 - **Agent 2 owns**: market creation, betting, and claim/payout logic —
   the `OPEN` and `RESOLVED -> paid out` parts of the lifecycle.
